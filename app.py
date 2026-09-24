@@ -3,12 +3,20 @@ from app import create_app, db
 
 app = create_app()
 
+# Initialize tables and seed demo data on startup (runs under both Gunicorn and dev server)
+with app.app_context():
+    db.create_all()
+    try:
+        from app.models.user import User
+        if User.query.count() == 0:
+            print("Database is empty. Seeding initial demo data...")
+            from scripts.seed_database import seed_database
+            seed_database()
+            print("Demo database initialized successfully.")
+    except Exception as e:
+        print("Initial database check/seed notice:", e)
+
 if __name__ == '__main__':
-    # Ensure database tables exist for local testing
-    with app.app_context():
-        db.create_all()
-        print("Database tables initialized successfully.")
-        
     host = os.environ.get('HOST', '127.0.0.1')
     port = int(os.environ.get('PORT', 5000))
     

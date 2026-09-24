@@ -21,11 +21,14 @@ COPY . .
 # Environment defaults
 ENV FLASK_APP=app.py
 ENV FLASK_DEBUG=0
-ENV PORT=5000
+ENV PORT=10000
 ENV HOST=0.0.0.0
 ENV TESSERACT_PATH=/usr/bin/tesseract
+ENV SECRET_KEY=caretrack-ai-production-secret-key-render-2026
+ENV FIELD_ENCRYPTION_KEY=h_G-L7B0l38yK6qf3vS2Hh782wR4-r85kC-v_1E4-j0=
 
-EXPOSE 5000
+EXPOSE 10000
 
-# Start production server using gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
+# Start production server using gunicorn with dynamic PORT support
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 2 --timeout 120 app:app"]
+
