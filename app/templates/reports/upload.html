@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Medical Report - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg rounded-5 overflow-hidden animated-fade-in">
+                <!-- Header -->
+                <div class="p-4 bg-teal text-white text-center">
+                    <h2 class="fw-bold tracking-tight mb-1"><i class="bi bi-file-earmark-arrow-up-fill me-1"></i>Upload Health Report</h2>
+                    <p class="mb-0 fs-7 opacity-75">Upload blood tests or diagnostic PDF/image files</p>
+                </div>
+                
+                <!-- Body -->
+                <div class="p-4 p-md-5 bg-body">
+                    {% if current_user.role == 'DOCTOR' and patient %}
+                        <div class="alert alert-info border-0 rounded-4 d-flex align-items-center gap-3 mb-4">
+                            <i class="bi bi-person-fill fs-4 text-teal"></i>
+                            <div>
+                                <span class="fs-8 text-muted d-block">Uploading for Patient</span>
+                                <strong class="fs-7 text-body">{{ patient.name }} ({{ patient.primary_condition }})</strong>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <form method="POST" enctype="multipart/form-data">
+                        <!-- CSRF Protection -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-4">
+                            <label for="report_file" class="form-label fw-semibold fs-7 text-secondary">Select Report Document</label>
+                            <div class="border border-dashed rounded-4 p-4 text-center bg-body-tertiary position-relative hover-shadow transition">
+                                <i class="bi bi-file-pdf-fill text-teal display-4 mb-3 d-block"></i>
+                                <span class="d-block text-secondary fw-semibold fs-7 mb-1">Drag and drop file here, or click to browse</span>
+                                <span class="d-block text-muted fs-8 mb-3">PDF, PNG, JPG, or JPEG (Max 16MB)</span>
+                                <input type="file" name="report_file" id="report_file" class="form-control rounded-3" required accept=".pdf,.png,.jpg,.jpeg">
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning border-0 rounded-4 d-flex gap-2.5 fs-8 text-warning-emphasis bg-warning-subtle mb-4">
+                            <i class="bi bi-info-circle-fill fs-5 mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <strong>AI Extraction Active:</strong> CareTrack AI automatically scans the file using Tesseract OCR and parses numerical markers. You will be able to review and correct all values in the next step.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-teal btn-lg rounded-3 py-2.5 fw-semibold">
+                                <i class="bi bi-cpu-fill me-1"></i> Scan & Process Report
+                            </button>
+                            {% if current_user.role == 'PATIENT' %}
+                                <a href="{{ url_for('reports.history') }}" class="btn btn-teal-light btn-lg rounded-3 py-2.5 fw-semibold">Cancel</a>
+                            {% else %}
+                                <a href="{{ url_for('doctor.patient_detail', patient_id=patient.id) }}" class="btn btn-teal-light btn-lg rounded-3 py-2.5 fw-semibold">Cancel</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

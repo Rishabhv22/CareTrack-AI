@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if action == 'create' %}Complete{% else %}Edit{% endif %} Clinician Profile - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg rounded-5 overflow-hidden animated-fade-in">
+                <!-- Header -->
+                <div class="p-4 bg-teal text-white text-center">
+                    <h2 class="fw-bold tracking-tight mb-1">
+                        {% if action == 'create' %}Clinician Setup Profile{% else %}Update Clinician Profile{% endif %}
+                    </h2>
+                    <p class="mb-0 fs-7 opacity-75">Provide your professional credentials for patient monitoring supervision</p>
+                </div>
+                
+                <!-- Body -->
+                <div class="p-4 p-md-5 bg-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label fw-semibold fs-7 text-secondary">Full Name (including Title/Credentials)</label>
+                            {{ form.name(class="form-control rounded-3 py-2.5 " + ("is-invalid" if form.name.errors else ""), placeholder="Dr. Rahul Sharma, MD") }}
+                            {% for error in form.name.errors %}
+                                <div class="invalid-feedback fs-8">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="specialization" class="form-label fw-semibold fs-7 text-secondary">Medical Specialization</label>
+                            {{ form.specialization(class="form-control rounded-3 py-2.5 " + ("is-invalid" if form.specialization.errors else ""), placeholder="e.g., Endocrinologist, Cardiologist") }}
+                            {% for error in form.specialization.errors %}
+                                <div class="invalid-feedback fs-8">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="clinic_name" class="form-label fw-semibold fs-7 text-secondary">Hospital / Clinic Affiliation</label>
+                            {{ form.clinic_name(class="form-control rounded-3 py-2.5 " + ("is-invalid" if form.clinic_name.errors else ""), placeholder="e.g., CareMax Clinic, Apollo Hospital") }}
+                            {% for error in form.clinic_name.errors %}
+                                <div class="invalid-feedback fs-8">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="phone" class="form-label fw-semibold fs-7 text-secondary">Contact Phone Number (Optional)</label>
+                            {{ form.phone(class="form-control rounded-3 py-2.5 " + ("is-invalid" if form.phone.errors else ""), placeholder="+1 (555) 000-0000") }}
+                            {% for error in form.phone.errors %}
+                                <div class="invalid-feedback fs-8">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Submit -->
+                        <div class="d-grid gap-2 border-top pt-4">
+                            {{ form.submit(class="btn btn-teal btn-lg rounded-3 py-2.5 fw-semibold") }}
+                            <a href="{{ url_for('doctor.dashboard') }}" class="btn btn-teal-light btn-lg rounded-3 py-2.5 fw-semibold">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

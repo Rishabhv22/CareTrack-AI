@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Panel - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="fw-bold tracking-tight mb-1"><i class="bi bi-shield-lock-fill text-teal me-1"></i>System Admin Console</h1>
+            <p class="text-muted mb-0">Deactivate accounts, supervise registration logs, and inspect security audits.</p>
+        </div>
+    </div>
+
+    <!-- Stat boxes -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card card-dashboard p-4 border-0 shadow-sm text-center">
+                <span class="text-muted fs-8 d-block fw-semibold text-uppercase">Total Registered Users</span>
+                <span class="display-5 fw-bold text-teal mt-1">{{ total_users }}</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-dashboard p-4 border-0 shadow-sm text-center">
+                <span class="text-muted fs-8 d-block fw-semibold text-uppercase">Total Clinicians</span>
+                <span class="display-5 fw-bold text-teal mt-1">{{ total_doctors }}</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-dashboard p-4 border-0 shadow-sm text-center">
+                <span class="text-muted fs-8 d-block fw-semibold text-uppercase">Total Monitored Patients</span>
+                <span class="display-5 fw-bold text-teal mt-1">{{ total_patients }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- User Management Table -->
+        <div class="col-lg-8">
+            <h4 class="fw-bold mb-3 text-secondary"><i class="bi bi-people-fill me-1 text-teal"></i> User Account Control</h4>
+            <div class="card card-dashboard border-0 shadow-sm overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light fs-8 text-secondary">
+                            <tr>
+                                <th>Email / Account</th>
+                                <th>Role</th>
+                                <th>Created On</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-body d-block">{{ u.email }}</strong>
+                                        <span class="text-muted fs-8">UUID: {{ u.id[:8] }}...</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-body border text-body-secondary px-2 py-1 fs-9 fw-semibold">{{ u.role }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="fs-8 text-body">{{ u.created_at.strftime('%b %d, %Y') }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if u.is_active_user %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %} px-2.5 py-1 rounded-pill fs-8 fw-semibold" id="status-badge-{{ u.id }}">
+                                            {% if u.is_active_user %}Active{% else %}Deactivated{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if u.id == current_user.id %}
+                                            <span class="text-muted fs-8 italic">Admin Account</span>
+                                        {% else %}
+                                            <button class="btn btn-sm {% if u.is_active_user %}btn-outline-danger{% else %}btn-outline-success{% endif %} rounded-pill px-3 fs-8" id="btn-toggle-{{ u.id }}" onclick="toggleUser('{{ u.id }}')">
+                                                {% if u.is_active_user %}Deactivate{% else %}Activate{% endif %}
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Logs (Right Sidebar) -->
+        <div class="col-lg-4">
+            <h4 class="fw-bold mb-3 text-secondary"><i class="bi bi-activity me-1 text-teal"></i> Security Audit Log</h4>
+            <div class="card card-dashboard p-3 border-0 shadow-sm" style="max-height: 500px; overflow-y: auto;">
+                <div class="d-flex flex-column gap-3">
+                    {% if not audit_logs %}
+                        <p class="text-muted fs-8 text-center my-4">No audit logs recorded yet.</p>
+                    {% else %}
+                        {% for log in audit_logs %}
+                            <div class="border-bottom pb-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong class="fs-8 text-body-emphasis">{{ log.action }}</strong>
+                                    <span class="fs-9 text-muted">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+                                </div>
+                                <span class="fs-8 text-muted d-block">User: {{ log.user.email if log.user else 'System' }}</span>
+                                <span class="fs-9 text-muted d-block"><i class="bi bi-laptop me-1"></i> IP: {{ log.ip_address or 'N/A' }} • Date: {{ log.timestamp.strftime('%b %d, %Y') }}</span>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleUser(userId) {
+    const csrfToken = "{{ csrf_token() }}";
+    const toggleUrl = "/doctor/admin/user/toggle/" + userId;
+    
+    fetch(toggleUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+        }
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(data => { throw new Error(data.error || "Server error") });
+        }
+        return res.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Update status badge UI
+            const badge = document.getElementById("status-badge-" + userId);
+            const btn = document.getElementById("btn-toggle-" + userId);
+            
+            if (data.new_status) {
+                badge.className = "badge bg-success-subtle text-success px-2.5 py-1 rounded-pill fs-8 fw-semibold";
+                badge.innerText = "Active";
+                btn.className = "btn btn-sm btn-outline-danger rounded-pill px-3 fs-8";
+                btn.innerText = "Deactivate";
+            } else {
+                badge.className = "badge bg-danger-subtle text-danger px-2.5 py-1 rounded-pill fs-8 fw-semibold";
+                badge.innerText = "Deactivated";
+                btn.className = "btn btn-sm btn-outline-success rounded-pill px-3 fs-8";
+                btn.innerText = "Activate";
+            }
+        }
+    })
+    .catch(err => {
+        alert(err.message);
+        console.error("Error toggling user active status:", err);
+    });
+}
+</script>
+{% endblock %}

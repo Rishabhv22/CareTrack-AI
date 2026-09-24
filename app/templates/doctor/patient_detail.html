@@ -1,0 +1,1025 @@
+{% extends 'base.html' %}
+
+{% block title %}Case Review: {{ patient.name }} - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Breadcrumbs / Back button -->
+    <a href="{{ url_for('doctor.dashboard') }}" class="btn btn-teal-light rounded-pill px-3 py-1.5 fs-8 mb-4">
+        <i class="bi bi-arrow-left-short fs-5 align-middle"></i> Back to Patient Panel
+    </a>
+
+    <!-- Patient Header Card -->
+    <div class="card card-dashboard p-4 border-0 shadow-sm mb-4 bg-gradient-card">
+        <div class="row align-items-center g-3">
+            <div class="col-md-7">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-3 rounded-circle bg-teal text-white fw-bold fs-4" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                        {{ patient.name[0] | upper }}
+                    </div>
+                    <div>
+                        <h2 class="fw-bold tracking-tight mb-1">{{ patient.name }}</h2>
+                        <p class="text-muted mb-0 fs-7">
+                            {{ patient.gender }} • {{ patient.age }} Years Old • Phone: {{ patient.phone or 'Not provided' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5 text-md-end text-start">
+                <span class="badge bg-danger text-white rounded-pill px-3 py-1.5 fs-8 fw-semibold mb-2 d-inline-block">
+                    Primary Condition: {{ patient.primary_condition }}
+                </span>
+                <div class="text-muted fs-8">Connected since: {{ patient.created_at.strftime('%B %d, %Y') }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Alerts Bar -->
+    {% if alerts %}
+        <div class="alert alert-warning border-0 rounded-4 shadow-sm p-4 mb-4">
+            <h5 class="fw-bold text-warning-emphasis mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i> Requires Clinician Review (Active Alerts)</h5>
+            <div class="d-flex flex-column gap-2">
+                {% for alert in alerts %}
+                    <div class="d-flex justify-content-between align-items-center bg-body p-3 rounded-3 border border-warning-subtle">
+                        <div>
+                            <span class="badge {% if alert.severity == 'HIGH' %}bg-danger{% else %}bg-warning text-dark{% endif %} px-2 py-0.5 rounded-pill fs-9 fw-semibold me-2">{{ alert.severity }}</span>
+                            <span class="fs-7 text-body-emphasis">{{ alert.message }}</span>
+                            <span class="fs-9 text-muted d-block mt-0.5">Triggered on {{ alert.created_at.strftime('%b %d at %H:%M %p') }}</span>
+                        </div>
+                        <button class="btn btn-sm btn-teal rounded-pill px-3 fs-8" onclick="resolveAlertDetail('{{ alert.id }}')">
+                            Acknowledge
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- Left Sidebar: Profile Details & Adherence Score -->
+        <div class="col-lg-3">
+            <!-- Adherence score card -->
+            <div class="card card-dashboard p-4 border-0 shadow-sm mb-4 bg-teal-light text-teal border border-teal-light">
+                <h5 class="fw-bold mb-3"><i class="bi bi-speedometer2 me-1"></i> Care Adherence Score</h5>
+                <div class="text-center py-2">
+                    <span class="display-3 fw-bold">{{ adherence.total }}</span><span class="fs-6">/100</span>
+                </div>
+                <div class="fs-8 text-muted mt-3">
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span>Medications</span>
+                        <strong class="text-body">{{ adherence.medication.score }} / 40</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span>Daily Logging</span>
+                        <strong class="text-body">{{ adherence.logging.score }} / 10</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span>Exercise logs</span>
+                        <strong class="text-body">{{ adherence.exercise.score }} / 20</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Diet checks</span>
+                        <strong class="text-body">{{ adherence.diet.score }} / 20</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ML Predictions Card -->
+            <div class="card card-dashboard p-4 border-0 shadow-sm mb-4" id="ml-predictions-card">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold mb-0 text-secondary"><i class="bi bi-cpu-fill text-teal me-1"></i> ML Analytics</h5>
+                    {% if not patient.ml_acknowledged %}
+                        <span class="badge bg-warning text-dark border border-warning rounded-pill px-2 py-0.5 fs-9 fw-bold animate-pulse" id="ml-warning-badge">
+                            Unverified
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    <span class="d-block fw-semibold text-secondary fs-8 uppercase">Progress Trend</span>
+                    <div class="d-flex align-items-center justify-content-between mt-1.5">
+                        <span class="badge {% if ml_prediction == 'Improving' %}bg-success{% elif ml_prediction == 'Stable' %}bg-info{% else %}bg-danger{% endif %} rounded-pill px-3 py-1.5 fs-7 fw-bold">
+                            {{ ml_prediction }}
+                        </span>
+                        {% if not patient.ml_acknowledged %}
+                            <button class="btn btn-xs btn-outline-warning rounded-pill px-2 py-0.5 fs-9" onclick="acknowledgeML('{{ patient.id }}')" id="btn-ack-ml">
+                                Verify
+                            </button>
+                        {% endif %}
+                    </div>
+                    <span class="fs-9 text-muted d-block mt-1">Confidence: {{ ml_confidence }}% (Random Forest)</span>
+                </div>
+                <div>
+                    <span class="d-block fw-semibold text-secondary fs-8 uppercase">Compliance Cluster</span>
+                    <strong class="text-body fs-7 mt-1.5 d-block text-teal"><i class="bi bi-bookmark-star-fill me-1"></i>{{ ml_archetype }}</strong>
+                    <span class="fs-9 text-muted d-block mt-1">(K-Means grouping)</span>
+                </div>
+            </div>
+
+            <!-- Profile Summary Card -->
+            <div class="card card-dashboard p-4 border-0 shadow-sm">
+                <h5 class="fw-bold mb-3 text-secondary"><i class="bi text-teal bi-file-person me-1"></i> Clinical Baseline</h5>
+                <div class="fs-7 text-muted">
+                    <div class="mb-3">
+                        <span class="d-block fw-semibold text-secondary fs-8 uppercase">Height & Weight</span>
+                        <span class="text-body">{{ patient.height }} cm / {{ patient.weight }} kg</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="d-block fw-semibold text-secondary fs-8 uppercase">BMI Category</span>
+                        <span class="text-body">{{ patient.bmi }} ({{ bmi_category }})</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="d-block fw-semibold text-secondary fs-8 uppercase">Comorbidities</span>
+                        <span class="text-body">{{ patient.other_conditions or 'None reported' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="d-block fw-semibold text-secondary fs-8 uppercase">Allergies</span>
+                        <span class="text-body text-danger">{{ patient.allergies or 'No allergies' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="d-block fw-semibold text-secondary fs-8 uppercase">Lifestyle</span>
+                        <span class="text-body">Smoking: {{ patient.smoking }} <br> Alcohol: {{ patient.alcohol }} <br> Activity: {{ patient.activity_level }}</span>
+                    </div>
+                    <div>
+                        <span class="d-block fw-semibold text-secondary fs-8 uppercase">Family History</span>
+                        <span class="text-body">{{ patient.family_history or 'None reported' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Main Panel: Tabs -->
+        <div class="col-lg-9">
+            <!-- Tabs Navigation -->
+            <ul class="nav nav-tabs border-bottom mb-4 gap-2" id="patientTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active rounded-top-3 border-0 fw-semibold px-4 py-2.5 fs-7" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                        <i class="bi bi-graph-up-arrow me-1"></i> Biometric Trends
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-top-3 border-0 fw-semibold px-4 py-2.5 fs-7" id="timeline-tab" data-bs-toggle="tab" data-bs-target="#timeline" type="button" role="tab">
+                        <i class="bi bi-calendar-range me-1"></i> Patient Timeline
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-top-3 border-0 fw-semibold px-4 py-2.5 fs-7" id="prescribe-tab" data-bs-toggle="tab" data-bs-target="#prescribe" type="button" role="tab">
+                        <i class="bi bi-capsule me-1"></i> Prescriptions & Notes
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-top-3 border-0 fw-semibold px-4 py-2.5 fs-7" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab">
+                        <i class="bi bi-file-earmark-medical me-1"></i> Reports & Comparison
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-top-3 border-0 fw-semibold px-4 py-2.5 fs-7" id="journals-tab" data-bs-toggle="tab" data-bs-target="#journals" type="button" role="tab">
+                        <i class="bi bi-journal-medical me-1"></i> Daily Journal NLP
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-top-3 border-0 fw-semibold px-4 py-2.5 fs-7" id="continuous-tab" data-bs-toggle="tab" data-bs-target="#continuous" type="button" role="tab">
+                        <i class="bi bi-watch me-1"></i> Continuous Monitoring
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tabs Content -->
+            <div class="tab-content" id="patientTabsContent">
+                <!-- 1. Progress Overview -->
+                <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card card-dashboard p-4 border-0 shadow-sm">
+                                <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-droplet-fill text-danger me-1"></i> Blood Glucose</h5>
+                                <div style="height: 220px;">
+                                    {% if glucose %}
+                                        <canvas id="glucoseChartDetail" aria-label="Detailed line chart displaying blood glucose measurements over the past 30 days"></canvas>
+                                    {% else %}
+                                        <div class="text-center py-5 text-muted fs-8">No glucose logs recorded in the last 30 days.</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card card-dashboard p-4 border-0 shadow-sm">
+                                <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-activity text-primary me-1"></i> Blood Pressure</h5>
+                                <div style="height: 220px;">
+                                    {% if bp_sys %}
+                                        <canvas id="bpChartDetail" aria-label="Detailed line chart displaying systolic and diastolic blood pressure readings over the past 30 days"></canvas>
+                                    {% else %}
+                                        <div class="text-center py-5 text-muted fs-8">No BP logs recorded in the last 30 days.</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="card card-dashboard p-4 border-0 shadow-sm">
+                                <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-speedometer2 text-teal me-1"></i> Weight Trend</h5>
+                                <div style="height: 220px;">
+                                    {% if weights %}
+                                        <canvas id="weightChartDetail" aria-label="Detailed line chart displaying patient weight logs over the past 30 days"></canvas>
+                                    {% else %}
+                                        <div class="text-center py-5 text-muted fs-8">No weight logs recorded.</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Longitudinal Timeline -->
+                <div class="tab-pane fade" id="timeline" role="tabpanel">
+                    <div class="card card-dashboard p-4 border-0 shadow-sm">
+                        <h5 class="fw-bold mb-4 text-secondary"><i class="bi bi-calendar-range text-teal me-1"></i> Longitudinal Care Timeline</h5>
+                        
+                        <div class="timeline-container relative ps-4 border-start border-2 border-teal ms-2">
+                            {% for event in timeline_events %}
+                                <div class="timeline-item mb-4 relative">
+                                    <span class="position-absolute start-0 translate-middle-x bg-{{ event.badge_color }} rounded-circle border border-white" style="width: 12px; height: 12px; margin-left: -25px;"></span>
+                                    <div class="timeline-content bg-light p-3 rounded-4 border fs-8">
+                                        <div class="d-flex justify-content-between mb-1.5 flex-wrap gap-2">
+                                            <strong class="text-body-emphasis"><i class="bi {{ event.icon }} text-{{ event.badge_color }} me-1"></i> {{ event.title }}</strong>
+                                            <span class="text-muted">{{ event.date.strftime('%b %d, %Y') }}</span>
+                                        </div>
+                                        <p class="mb-0 text-muted">{{ event.description }}</p>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <p class="text-muted mb-0">No timeline events recorded.</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Prescriptions & Notes -->
+                <div class="tab-pane fade" id="prescribe" role="tabpanel">
+                    <div class="row g-4">
+                        <!-- Prescriptions -->
+                        <div class="col-md-7">
+                            <div class="card card-dashboard p-4 border-0 shadow-sm mb-4">
+                                <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-capsule-fill text-teal me-1"></i> Active Prescriptions</h5>
+                                {% if not prescriptions %}
+                                    <p class="text-muted fs-8">No active prescriptions logged. Use the form on the right to prescribe.</p>
+                                {% else %}
+                                    <div class="table-responsive">
+                                        <table class="table align-middle fs-7">
+                                            <thead>
+                                                <tr>
+                                                    <th>Drug Details</th>
+                                                    <th>Frequency</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for med in prescriptions %}
+                                                    <tr>
+                                                        <td>
+                                                            <strong class="text-body d-block">{{ med.name }} ({{ med.dosage }})</strong>
+                                                            <span class="text-muted fs-8">Timing: {{ med.timing or 'N/A' }}</span>
+                                                        </td>
+                                                        <td>{{ med.frequency }}</td>
+                                                        <td>
+                                                            {% if med.is_active %}
+                                                                <span class="badge bg-success rounded-pill px-2.5 py-1 fs-9 fw-semibold">Active</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary rounded-pill px-2.5 py-1 fs-9 fw-medium">Stopped</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if med.is_active %}
+                                                                <form method="POST" action="{{ url_for('doctor.stop_prescription', patient_id=patient.id, medication_id=med.id) }}" style="display:inline;">
+                                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill fs-8 px-2 py-0.5">Stop</button>
+                                                                </form>
+                                                            {% else %}
+                                                                <span class="text-muted fs-8">{{ med.end_date.strftime('%b %d') if med.end_date else '' }}</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Clinician Notes Log -->
+                            <div class="card card-dashboard p-4 border-0 shadow-sm">
+                                <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-journal-text text-teal me-1"></i> Clinician Consult Notes</h5>
+                                <form method="POST" action="{{ url_for('doctor.add_note', patient_id=patient.id) }}" class="mb-4">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="mb-2">
+                                        <textarea name="note_text" class="form-control rounded-3 fs-7" rows="2" placeholder="Write advice, medication changes or clinical assessments..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-teal btn-sm rounded-pill px-3 fw-semibold">Save Consult Note</button>
+                                </form>
+                                
+                                <div class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;">
+                                    {% if not notes %}
+                                        <p class="text-muted fs-8">No clinician notes registered.</p>
+                                    {% else %}
+                                        {% for note in notes %}
+                                            <div class="bg-body-tertiary p-3 rounded-3 fs-7 border">
+                                                <div class="d-flex justify-content-between text-muted fs-8 mb-1.5">
+                                                    <span>By {{ note.doctor.name }}</span>
+                                                    <span>{{ note.created_at.strftime('%b %d, %Y at %H:%M') }}</span>
+                                                </div>
+                                                <p class="mb-0 text-body-emphasis">{{ note.note_text }}</p>
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Prescribe Form -->
+                        <div class="col-md-5">
+                            <div class="card card-dashboard p-4 border-0 shadow-sm">
+                                <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-file-earmark-plus text-teal me-1"></i> Add Prescription</h5>
+                                <form method="POST" action="{{ url_for('doctor.prescribe', patient_id=patient.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    
+                                    <div class="mb-2.5">
+                                        <label class="form-label fw-semibold fs-8 text-secondary mb-1">Medication Name</label>
+                                        <input type="text" name="name" class="form-control form-control-sm rounded-3" placeholder="e.g. Metformin" required>
+                                    </div>
+                                    <div class="mb-2.5">
+                                        <label class="form-label fw-semibold fs-8 text-secondary mb-1">Dosage</label>
+                                        <input type="text" name="dosage" class="form-control form-control-sm rounded-3" placeholder="e.g. 500mg" required>
+                                    </div>
+                                    <div class="mb-2.5">
+                                        <label class="form-label fw-semibold fs-8 text-secondary mb-1">Frequency</label>
+                                        <input type="text" name="frequency" class="form-control form-control-sm rounded-3" placeholder="e.g. Twice daily" required>
+                                    </div>
+                                    <div class="mb-2.5">
+                                        <label class="form-label fw-semibold fs-8 text-secondary mb-1">Timing</label>
+                                        <input type="text" name="timing" class="form-control form-control-sm rounded-3" placeholder="e.g. After meals">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold fs-8 text-secondary mb-1">Special Instructions</label>
+                                        <textarea name="instructions" class="form-control form-control-sm rounded-3" rows="2" placeholder="e.g. Take with plenty of water"></textarea>
+                                    </div>
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-teal btn-sm rounded-pill fw-semibold py-1.5">Issue Prescription</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Reports & Insights -->
+                <div class="tab-pane fade" id="reports" role="tabpanel">
+                    <!-- AI weekly Summary copy -->
+                    {% if latest_summary %}
+                        <div class="card card-dashboard card-gradient p-4 border-0 shadow-sm mb-4" id="ai-summary-card">
+                            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-magic text-teal fs-4"></i>
+                                    <h5 class="fw-bold mb-0 text-gradient">AI Patient Progress Summary</h5>
+                                    {% if not latest_summary.is_acknowledged %}
+                                        <span class="badge bg-warning text-dark border border-warning rounded-pill px-2 py-1 fs-9 fw-bold animate-pulse ms-2" id="summary-warning-badge">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>AI-Generated, Unverified
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    {% if not latest_summary.is_acknowledged %}
+                                        <button class="btn btn-xs btn-outline-warning rounded-pill px-2 py-1 fs-9" onclick="acknowledgeSummary('{{ latest_summary.id }}')" id="btn-ack-summary">
+                                            Verify & Acknowledge
+                                        </button>
+                                    {% endif %}
+                                    <span class="fs-8 text-muted">Latest: {{ latest_summary.created_at.strftime('%b %d, %Y') }}</span>
+                                </div>
+                            </div>
+                            <div class="fs-7 text-body-secondary mb-0 markdown-content">{{ latest_summary.summary_text }}</div>
+
+                            {% if historical_summaries | length > 1 %}
+                                <div class="mt-4 border-top pt-3">
+                                    <button class="btn btn-sm btn-outline-teal rounded-pill px-3 fs-8" type="button" data-bs-toggle="collapse" data-bs-target="#summariesHistory" aria-expanded="false">
+                                        <i class="bi bi-clock-history me-1"></i> View Historical Summaries ({{ historical_summaries | length - 1 }} older)
+                                    </button>
+                                    <div class="collapse mt-3" id="summariesHistory">
+                                        <div class="d-flex flex-column gap-3">
+                                            {% for summary in historical_summaries[1:] %}
+                                                <div class="bg-body-tertiary p-3 rounded-4 border fs-8 text-secondary">
+                                                    <div class="d-flex justify-content-between mb-2">
+                                                        <strong class="text-teal">Summary ({{ summary.start_date.strftime('%b %d') }} - {{ summary.end_date.strftime('%b %d, %Y') }})</strong>
+                                                        <span>Generated on {{ summary.created_at.strftime('%b %d, %Y') }}</span>
+                                                    </div>
+                                                    <div class="mb-0 text-body-secondary markdown-content">{{ summary.summary_text }}</div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Laboratory Report Parameter Comparison -->
+                    {% if report_comparison %}
+                        <div class="card card-dashboard p-4 border-0 shadow-sm mb-4">
+                            <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-arrow-left-right text-teal me-1"></i> Laboratory Report Parameter Comparison</h5>
+                            <div class="table-responsive">
+                                <table class="table align-middle fs-7 mb-0">
+                                    <thead class="table-light fs-8 text-secondary">
+                                        <tr>
+                                            <th>Parameter</th>
+                                            <th>Previous Value</th>
+                                            <th>Latest Value</th>
+                                            <th>Change (Delta)</th>
+                                            <th>Percentage Change</th>
+                                            <th>Ref Range</th>
+                                            <th>Trend</th>
+                                            <th>OCR Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for param_name, comp in report_comparison.items() %}
+                                            <tr>
+                                                <td><strong>{{ param_name }}</strong></td>
+                                                <td class="text-muted">
+                                                    {% if comp.prev_value is not none %}
+                                                        {{ comp.prev_value }} {{ comp.unit }}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td><strong>{{ comp.latest_value }} {{ comp.unit }}</strong></td>
+                                                <td>
+                                                    {% if comp.diff is not none %}
+                                                        <span class="text-secondary fw-semibold">
+                                                            {{ '+' if comp.diff > 0 else '' }}{{ comp.diff }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if comp.pct_change is not none %}
+                                                        <span class="text-secondary fw-semibold">
+                                                            {{ '+' if comp.pct_change > 0 else '' }}{{ comp.pct_change }}%
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="fs-8 text-secondary">{{ comp.normal_range or 'N/A' }}</td>
+                                                <td>
+                                                    {% if comp.trend == 'Increased' %}
+                                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 fs-9 fw-semibold"><i class="bi bi-arrow-up-right me-1"></i> Increased</span>
+                                                    {% elif comp.trend == 'Decreased' %}
+                                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 fs-9 fw-semibold"><i class="bi bi-arrow-down-left me-1"></i> Decreased</span>
+                                                    {% elif comp.trend == 'No significant recorded change' %}
+                                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 fs-9 fw-semibold">No significant change</span>
+                                                    {% else %}
+                                                        <span class="badge bg-light text-secondary rounded-pill px-2 py-0.5 fs-9 fw-medium">Baseline</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if comp.confidence %}
+                                                        <span class="badge {% if comp.confidence < 85.0 %}bg-danger{% else %}bg-success{% endif %} rounded-pill fs-9 py-0.5 px-2">
+                                                            {{ '%.1f' | format(comp.confidence) }}%
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Clinical Insights Engine Observations -->
+                    <div class="card card-dashboard p-4 border-0 shadow-sm mb-4">
+                        <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-cpu text-teal me-1"></i> Patient Progress Analytics (Clinical Insight Engine)</h5>
+                        {% if not insights %}
+                            <p class="text-muted fs-8">No clinical insight entries recorded yet. Complete logs over weeks to trigger trend analytics.</p>
+                        {% else %}
+                            <div class="d-flex flex-column gap-2">
+                                {% for insight in insights %}
+                                    <div class="p-3 bg-body-tertiary border-start border-3 border-teal rounded-3 fs-7">
+                                        <div class="d-flex justify-content-between text-muted fs-9 mb-1.5">
+                                            <span class="fw-bold">{{ insight.insight_type }}</span>
+                                            <span>{{ insight.created_at.strftime('%b %d, %Y') }}</span>
+                                        </div>
+                                        <p class="mb-0 text-body-emphasis">{{ insight.insight_text }}</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Medical Report Documents Uploaded -->
+                    <div class="card card-dashboard p-4 border-0 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-secondary mb-0"><i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i> Uploaded Documents</h5>
+                            <a href="{{ url_for('reports.upload', patient_id=patient.id) }}" class="btn btn-teal-light btn-sm rounded-pill px-3 fs-8">
+                                <i class="bi bi-file-earmark-plus me-1"></i> Upload Document
+                            </a>
+                        </div>
+                        {% if not patient.medical_reports %}
+                            <p class="text-muted fs-8">No diagnostic documents uploaded for this patient.</p>
+                        {% else %}
+                            <div class="table-responsive">
+                                <table class="table align-middle fs-7 mb-0">
+                                    <thead class="table-light fs-8 text-secondary">
+                                        <tr>
+                                            <th>Document Name</th>
+                                            <th>Uploaded On</th>
+                                            <th>Status</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for report in patient.medical_reports %}
+                                            <tr>
+                                                <td><strong>{{ report.file_name }}</strong></td>
+                                                <td>{{ report.uploaded_at.strftime('%b %d, %Y') }}</td>
+                                                <td>
+                                                    {% if report.is_processed %}
+                                                        <span class="badge bg-success-subtle text-success px-2 py-0.5 rounded-pill fs-9 fw-semibold">Processed</span>
+                                                    {% else %}
+                                                        <span class="badge bg-warning-subtle text-warning px-2 py-0.5 rounded-pill fs-9 fw-semibold">Pending Review</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-end">
+                                                    <a href="{{ url_for('reports.review', report_id=report.id) }}" class="btn btn-outline-secondary btn-sm rounded-pill fs-8 py-0.5 px-2.5">
+                                                        Inspect
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 4. Symptoms & Journals -->
+                <div class="tab-pane fade" id="journals" role="tabpanel">
+                    <div class="card card-dashboard p-4 border-0 shadow-sm mb-4">
+                        <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-journal-medical text-teal me-1"></i> Patient Symptom Logs & NLP Summaries</h5>
+                        <div class="d-flex flex-column gap-3">
+                            {% if not journals %}
+                                <p class="text-muted fs-8">No diary entries logged by the patient recently.</p>
+                            {% else %}
+                                {% for j in journals %}
+                                    <div class="border-bottom pb-3 mb-2">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong class="fs-7 text-body-emphasis">{{ j.entry_date.strftime('%B %d, %Y') }}</strong>
+                                            {% if j.concerning_flag %}
+                                                <span class="badge bg-danger rounded-pill px-2.5 py-1 fs-9 fw-bold">CONCERNING FLAG</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="fs-7 text-muted italic mb-2">"{{ j.journal_text }}"</p>
+                                        <div class="bg-light p-2.5 rounded-3 fs-8 border">
+                                            <div class="row g-2">
+                                                <div class="col-md-6"><strong>AI Summary:</strong> {{ j.summary or 'No summary' }}</div>
+                                                <div class="col-md-6"><strong>Symptoms Identified:</strong> {{ j.extracted_symptoms or 'None' }}</div>
+                                                <div class="col-md-6"><strong>Medication mentions:</strong> {{ j.extracted_medications }}</div>
+                                                <div class="col-md-6"><strong>Lifestyle mentions:</strong> {{ j.extracted_diet_activity }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Continuous Monitoring (Wearable telemetry logs) -->
+                <div class="tab-pane fade" id="continuous" role="tabpanel">
+                    <!-- Device Connection Status Banner -->
+                    <div class="card card-dashboard p-4 border-0 shadow-sm mb-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="p-3 bg-info-subtle text-info rounded-4">
+                                    <i class="bi bi-watch fs-3"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-body">Device Connection Status</h5>
+                                    {% if device %}
+                                        <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1 fs-8 mb-1">
+                                            <i class="bi bi-patch-check-fill me-1"></i> Connected
+                                        </span>
+                                        <span class="fs-8 text-muted d-block">
+                                            Device: <strong>{{ device.device_name }}</strong> ({{ device.provider }}) &bull; 
+                                            Last Sync: <strong>{{ device.last_synced_at.strftime('%Y-%m-%d %I:%M %p') if device.last_synced_at else 'Never' }}</strong>
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 fs-8 mb-1">Disconnected</span>
+                                        <span class="fs-8 text-muted d-block">Patient has not connected any wearable devices or health platforms.</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="text-md-end alert alert-warning py-1.5 px-3 rounded-3 fs-9 mb-0">
+                                <i class="bi bi-info-circle-fill me-1"></i>
+                                <span><strong>DEMO DATA MODE ACTIVE</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if device %}
+                        <!-- Wearable statistics grid -->
+                        <div class="row g-3 mb-4">
+                            <!-- Steps Card -->
+                            <div class="col-md-3">
+                                <div class="card card-dashboard p-3.5 border-0 shadow-sm bg-body">
+                                    <span class="fs-9 text-muted d-block fw-semibold mb-1">AVG STEPS</span>
+                                    <strong class="fs-3 text-body d-block">{{ "{:,}".format(avg_steps) }}/day</strong>
+                                    <span class="fs-9 {% if steps_pct_change >= 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                                        <i class="bi {% if steps_pct_change >= 0 %}bi-arrow-up-short{% else %}bi-arrow-down-short{% endif %}"></i>
+                                        {{ steps_pct_change|abs }}% over 30d
+                                    </span>
+                                    <div class="mt-2"><span class="badge bg-teal-subtle text-teal rounded-pill px-2.5 py-0.5 fs-9.5 fw-medium">Wearable</span></div>
+                                </div>
+                            </div>
+                            <!-- Sleep Card -->
+                            <div class="col-md-3">
+                                <div class="card card-dashboard p-3.5 border-0 shadow-sm bg-body">
+                                    <span class="fs-9 text-muted d-block fw-semibold mb-1">AVG SLEEP</span>
+                                    <strong class="fs-3 text-body d-block">{{ avg_sleep }} hrs</strong>
+                                    <span class="fs-9 {% if sleep_pct_change >= 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                                        <i class="bi {% if sleep_pct_change >= 0 %}bi-arrow-up-short{% else %}bi-arrow-down-short{% endif %}"></i>
+                                        {{ sleep_pct_change|abs }}% over 30d
+                                    </span>
+                                    <div class="mt-2"><span class="badge bg-teal-subtle text-teal rounded-pill px-2.5 py-0.5 fs-9.5 fw-medium">Wearable</span></div>
+                                </div>
+                            </div>
+                            <!-- Weight Card -->
+                            <div class="col-md-3">
+                                <div class="card card-dashboard p-3.5 border-0 shadow-sm bg-body">
+                                    <span class="fs-9 text-muted d-block fw-semibold mb-1">WEIGHT DRIFT</span>
+                                    <strong class="fs-3 text-body d-block">{{ current_weight }} kg</strong>
+                                    <span class="fs-9 {% if weight_change <= 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                                        {{ '+' if weight_change > 0 else '' }}{{ weight_change }} kg overall
+                                    </span>
+                                    <div class="mt-2"><span class="badge bg-info-subtle text-info rounded-pill px-2.5 py-0.5 fs-9.5 fw-medium">Connected Scale</span></div>
+                                </div>
+                            </div>
+                            <!-- Vitals Card -->
+                            <div class="col-md-3">
+                                <div class="card card-dashboard p-3.5 border-0 shadow-sm bg-body">
+                                    <span class="fs-9 text-muted d-block fw-semibold mb-1">RESTING HR / BP</span>
+                                    <strong class="fs-4 text-body d-block">
+                                        {{ avg_resting_hr or 'N/A' }} <span class="fs-8 text-muted">BPM</span> 
+                                        {% if avg_bp_systolic %}
+                                            / {{ avg_bp_systolic }}/{{ avg_bp_diastolic }}
+                                        {% endif %}
+                                    </strong>
+                                    <span class="fs-9 text-muted fw-semibold">Avg values</span>
+                                    <div class="mt-2">
+                                        <span class="badge bg-teal-subtle text-teal rounded-pill px-2 py-0.5 fs-9.5 fw-medium">Wearable</span> / 
+                                        <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-0.5 fs-9.5 fw-medium">Medical Device</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clinical Insights Card -->
+                        <div class="card card-dashboard p-4 border-0 shadow-sm mb-4">
+                            <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-lightbulb-fill text-warning me-1"></i> Continuous Telemetry Observations</h5>
+                            <ul class="list-group list-group-flush border-0">
+                                {% set wearable_insights = [] %}
+                                {% for insight in insights %}
+                                    {% if insight.insight_type in ['StepsTrend', 'SleepTrend', 'WeightTrend', 'BPTrend', 'MissingWearableData', 'MissingWearableMetric'] %}
+                                        {% set _ = wearable_insights.append(insight) %}
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if wearable_insights %}
+                                    {% for insight in wearable_insights %}
+                                        <li class="list-group-item border-0 px-0 py-2 d-flex align-items-start gap-2 fs-7 text-secondary">
+                                            <i class="bi bi-info-circle-fill text-teal mt-0.5"></i>
+                                            <div>{{ insight.insight_text }}</div>
+                                        </li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="list-group-item border-0 px-0 py-2 text-muted fs-8">No significant anomalies or deviations detected.</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+
+                        <!-- Interactive charts -->
+                        <div class="card card-dashboard p-4 border-0 shadow-sm mb-4">
+                            <h5 class="fw-bold mb-4 text-secondary"><i class="bi bi-graph-up-arrow text-teal me-1"></i> Wearable Longitudinal Charts (Last 30 Days)</h5>
+                            
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-4 bg-body-tertiary">
+                                        <span class="fw-bold text-secondary fs-8 d-block mb-3">Daily Steps Log</span>
+                                        <div style="height: 180px;">
+                                            <canvas id="doc-chart-steps"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-4 bg-body-tertiary">
+                                        <span class="fw-bold text-secondary fs-8 d-block mb-3">Sleep Duration (hrs)</span>
+                                        <div style="height: 180px;">
+                                            <canvas id="doc-chart-sleep"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-4 bg-body-tertiary">
+                                        <span class="fw-bold text-secondary fs-8 d-block mb-3">Continuous Weight Tracking (kg)</span>
+                                        <div style="height: 180px;">
+                                            <canvas id="doc-chart-weight"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-4 bg-body-tertiary">
+                                        <span class="fw-bold text-secondary fs-8 d-block mb-3">Heart Rate (BPM)</span>
+                                        <div style="height: 180px;">
+                                            <canvas id="doc-chart-hr"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-watch display-3 d-block mb-3 text-secondary"></i>
+                            <p class="fs-7">Wearable data is unavailable for this patient since no device is connected.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Blood Glucose Chart
+    {% if glucose %}
+    const glucoseCtx = document.getElementById('glucoseChartDetail').getContext('2d');
+    new Chart(glucoseCtx, {
+        type: 'line',
+        data: {
+            labels: {{ glucose_dates | tojson }},
+            datasets: [{
+                label: 'Fasting Glucose (mg/dL)',
+                data: {{ glucose | tojson }},
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                borderWidth: 2.5,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: '#ef4444'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false } },
+                y: { min: 40, max: 300 }
+            }
+        }
+    });
+    {% endif %}
+
+    // 2. Blood Pressure Chart
+    {% if bp_sys %}
+    const bpCtx = document.getElementById('bpChartDetail').getContext('2d');
+    new Chart(bpCtx, {
+        type: 'line',
+        data: {
+            labels: {{ bp_dates | tojson }},
+            datasets: [
+                {
+                    label: 'Systolic BP (mmHg)',
+                    data: {{ bp_sys | tojson }},
+                    borderColor: '#0ea5e9',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.2,
+                    pointRadius: 3
+                },
+                {
+                    label: 'Diastolic BP (mmHg)',
+                    data: {{ bp_dia | tojson }},
+                    borderColor: '#10b981',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.2,
+                    pointRadius: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { display: false } },
+                y: { min: 50, max: 200 }
+            }
+        }
+    });
+    {% endif %}
+
+    // 3. Weight Chart
+    {% if weights %}
+    const weightCtx = document.getElementById('weightChartDetail').getContext('2d');
+    new Chart(weightCtx, {
+        type: 'line',
+        data: {
+            labels: {{ weight_dates | tojson }},
+            datasets: [{
+                label: 'Weight (kg)',
+                data: {{ weights | tojson }},
+                borderColor: '#0d9488',
+                backgroundColor: 'rgba(13, 148, 136, 0.05)',
+                borderWidth: 2.5,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: '#0d9488'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false } }
+            }
+        }
+    });
+    {% endif %}
+
+    // 4. Wearable Continuous Monitoring Trends (Only if device exists)
+    {% if device %}
+    let docCharts = {};
+    function initDocChart(canvasId, label, data, labels, borderColor, backgroundColor) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        if (docCharts[canvasId]) {
+            docCharts[canvasId].destroy();
+        }
+        docCharts[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    borderColor: borderColor,
+                    backgroundColor: backgroundColor,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { color: 'rgba(0,0,0,0.03)' } }
+                }
+            }
+        });
+    }
+
+    function initDocHrChart(labels, avgHr, restHr) {
+        const ctx = document.getElementById('doc-chart-hr').getContext('2d');
+        if (docCharts['doc-chart-hr']) {
+            docCharts['doc-chart-hr'].destroy();
+        }
+        docCharts['doc-chart-hr'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Avg Heart Rate',
+                        data: avgHr,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.2,
+                        pointRadius: 2
+                    },
+                    {
+                        label: 'Resting HR',
+                        data: restHr,
+                        borderColor: '#f43f5e',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.2,
+                        pointRadius: 2,
+                        borderDash: [3, 3]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    function loadDoctorWearableTrends() {
+        fetch("/api/doctor/patients/{{ patient.id }}/health-trends?days=30")
+        .then(res => res.json())
+        .then(data => {
+            initDocChart('doc-chart-steps', 'Daily Steps', data.steps, data.dates, '#0ea5e9', 'rgba(14, 165, 233, 0.05)');
+            initDocChart('doc-chart-sleep', 'Sleep Duration (hrs)', data.sleep, data.dates, '#f59e0b', 'rgba(245, 158, 11, 0.05)');
+            initDocChart('doc-chart-weight', 'Body Weight (kg)', data.weight, data.dates, '#10b981', 'rgba(16, 185, 129, 0.05)');
+            initDocHrChart(data.dates, data.heart_rate, data.resting_hr);
+        });
+    }
+
+    // Load trends when tab is shown
+    const continuousTabBtn = document.getElementById('continuous-tab');
+    if (continuousTabBtn) {
+        continuousTabBtn.addEventListener('shown.bs.tab', function () {
+            loadDoctorWearableTrends();
+        });
+    }
+    {% endif %}
+});
+
+function resolveAlertDetail(alertId) {
+    const csrfToken = "{{ csrf_token() }}";
+    fetch("/doctor/alert/resolve/" + alertId, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        }
+    })
+    .catch(err => console.error("Error resolving alert:", err));
+}
+
+function acknowledgeSummary(summaryId) {
+    const csrfToken = "{{ csrf_token() }}";
+    fetch("/doctor/ai-summary/acknowledge/" + summaryId, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const badge = document.getElementById('summary-warning-badge');
+            const button = document.getElementById('btn-ack-summary');
+            if (badge) badge.remove();
+            if (button) button.remove();
+        }
+    })
+    .catch(err => console.error("Error acknowledging summary:", err));
+}
+
+function acknowledgeML(patientId) {
+    const csrfToken = "{{ csrf_token() }}";
+    fetch("/doctor/patient/" + patientId + "/ml/acknowledge", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const badge = document.getElementById('ml-warning-badge');
+            const button = document.getElementById('btn-ack-ml');
+            if (badge) badge.remove();
+            if (button) button.remove();
+        }
+    })
+    .catch(err => console.error("Error acknowledging ML:", err));
+}
+</script>
+{% endblock %}

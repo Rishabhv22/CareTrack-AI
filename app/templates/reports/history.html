@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Medical Report History - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-5 flex-wrap gap-3">
+        <div>
+            <h1 class="fw-bold tracking-tight mb-1"><i class="bi bi-file-earmark-medical-fill text-teal me-2"></i>Medical History</h1>
+            <p class="text-muted mb-0">Track and compare clinical test parameters extracted from uploaded reports.</p>
+        </div>
+        <a href="{{ url_for('reports.upload') }}" class="btn btn-teal rounded-pill px-4 py-2.5 fw-semibold shadow-sm">
+            <i class="bi bi-file-earmark-plus-fill me-1"></i> Upload New Report
+        </a>
+    </div>
+
+    <!-- Trend Cards -->
+    {% if trends %}
+        <h4 class="fw-bold mb-4 text-body"><i class="bi bi-graph-up-arrow me-1 text-teal"></i> Parameter Trends</h4>
+        <div class="row g-4 mb-5">
+            {% for name, trend in trends.items() %}
+                <div class="col-md-4">
+                    <div class="card card-dashboard p-4 border-0 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="fw-bold text-secondary fs-7">{{ name }}</span>
+                            <span class="badge bg-teal-light text-teal rounded-pill px-2 py-1 fs-9">{{ trend.unit }}</span>
+                        </div>
+                        <div class="d-flex align-items-baseline gap-2 mb-2">
+                            <span class="fs-2 fw-bold text-body">{{ trend.latest_value }}</span>
+                            {% if trend.has_trend %}
+                                <span class="fs-7 fw-semibold {% if trend.diff < 0 %}text-success{% elif trend.diff > 0 %}text-danger{% else %}text-muted{% endif %}">
+                                    {% if trend.diff < 0 %}
+                                        <i class="bi bi-arrow-down-circle-fill"></i> {{ trend.diff | abs }} ({{ trend.pct | abs }}%)
+                                    {% elif trend.diff > 0 %}
+                                        <i class="bi bi-arrow-up-circle-fill"></i> +{{ trend.diff }} ({{ trend.pct }}%)
+                                    {% else %}
+                                        No change
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
+                        {% if trend.has_trend %}
+                            <p class="text-muted fs-8 mb-3">Compared to previous value of {{ trend.prev_value }} {{ trend.unit }}.</p>
+                        {% else %}
+                            <p class="text-muted fs-8 mb-3">Single measurement log. Future uploads will display trends.</p>
+                        {% endif %}
+                        
+                        <!-- Small Mini-chart -->
+                        <div style="height: 100px;">
+                            <canvas id="chart-{{ name | replace(' ', '') }}"></canvas>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Report Table -->
+    <h4 class="fw-bold mb-4 text-body"><i class="bi bi-file-earmark-medical me-1 text-teal"></i> Uploaded Documents</h4>
+    {% if not reports %}
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-body-tertiary">
+            <i class="bi bi-file-earmark-medical text-teal opacity-50 display-1 mb-3"></i>
+            <h3 class="fw-bold text-secondary">No Reports Scanned</h3>
+            <p class="text-muted mb-0">You haven't uploaded or finalized any medical reports yet.</p>
+        </div>
+    {% else %}
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light fs-8 text-secondary">
+                        <tr>
+                            <th>Report Name</th>
+                            <th>Uploaded On</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-3"></i>
+                                        <div>
+                                            <span class="fw-semibold text-body d-block">{{ report.file_name }}</span>
+                                            <span class="text-muted fs-8">Scan ID: {{ report.id[:8] }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fs-7 text-body">{{ report.uploaded_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success-subtle text-success px-2.5 py-1.5 rounded-pill fw-semibold fs-8">Processed</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('reports.review', report_id=report.id) }}" class="btn btn-teal-light btn-sm rounded-pill px-3 fs-8">
+                                        <i class="bi bi-pencil-square me-1"></i> Edit Values
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    {% if trends %}
+        {% for name, trend in trends.items() %}
+            const ctx_{{ name | replace(' ', '') }} = document.getElementById('chart-{{ name | replace(' ', '') }}').getContext('2d');
+            
+            const dates_{{ name | replace(' ', '') }} = [
+                {% for point in trend.chart_data %}
+                    "{{ point.date }}",
+                {% endfor %}
+            ];
+            const vals_{{ name | replace(' ', '') }} = [
+                {% for point in trend.chart_data %}
+                    {{ point.val }},
+                {% endfor %}
+            ];
+            
+            new Chart(ctx_{{ name | replace(' ', '') }}, {
+                type: 'line',
+                data: {
+                    labels: dates_{{ name | replace(' ', '') }},
+                    datasets: [{
+                        label: '{{ name }}',
+                        data: vals_{{ name | replace(' ', '') }},
+                        borderColor: '#0d9488',
+                        backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#0d9488'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { display: true, grid: { display: false }, ticks: { font: { size: 9 } } },
+                        y: { display: true, grid: { display: false }, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        {% endfor %}
+    {% endif %}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Educational Assistant - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Chat Card Container -->
+            <div class="card border-0 shadow-lg rounded-5 overflow-hidden animated-fade-in" style="height: calc(100vh - 180px); min-height: 500px;">
+                <!-- Header -->
+                <div class="p-4 bg-teal text-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="p-2.5 bg-white bg-opacity-20 rounded-circle text-white d-flex align-items-center justify-content-center">
+                            <i class="bi bi-robot fs-3"></i>
+                        </div>
+                        <div>
+                            <h4 class="fw-bold tracking-tight mb-0">Health Education Assistant</h4>
+                            <span class="fs-8 text-white-50"><i class="bi bi-shield-fill-check me-1"></i> RAG Medical Guidelines Database Connected</span>
+                        </div>
+                    </div>
+                    <span class="badge bg-warning text-dark px-2.5 py-1.5 rounded-pill fw-semibold fs-9"><i class="bi bi-info-circle-fill me-1"></i> Educational Only</span>
+                </div>
+                
+                <!-- Chat Area Layout -->
+                <div class="row g-0 flex-grow-1" style="height: calc(100% - 85px);">
+                    <!-- Chat History (Left/Main Panel) -->
+                    <div class="col-md-8 d-flex flex-column h-100 border-end">
+                        <!-- Message Container -->
+                        <div class="flex-grow-1 p-4 overflow-y-auto bg-body-tertiary" id="chat-messages-container" style="height: calc(100% - 80px);">
+                            <!-- Initial Bot Message -->
+                            <div class="d-flex gap-2.5 mb-4">
+                                <div class="p-2 rounded-circle bg-teal text-white fs-8 align-self-start mt-1"><i class="bi bi-robot"></i></div>
+                                <div class="bg-body p-3 rounded-4 shadow-sm border" style="max-width: 80%;">
+                                    <h6 class="fw-bold mb-1 fs-7">CareTrack AI Assistant</h6>
+                                    <p class="mb-0 fs-7">
+                                        Hello, {{ patient.name }}. I am your educational assistant. You can ask me questions about standard clinical guidelines for your condition, such as Type 2 Diabetes diets, physical exercise targets, or sodium limits for hypertension.
+                                    </p>
+                                    <p class="mb-0 fs-8 text-muted mt-2">
+                                        *Disclaimer: I provide information from verified medical guidelines. I do not diagnose conditions, prescribe drugs, or change doctor treatments.*
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Chat Input Form -->
+                        <div class="p-3 bg-body border-top">
+                            <form id="chat-form" class="input-group">
+                                <input type="text" id="chat-input" class="form-control rounded-pill-start py-2.5 px-4 fs-7 border-teal" placeholder="Type your health question here..." required autocomplete="off">
+                                <button type="submit" class="btn btn-teal rounded-pill-end px-4 fw-semibold"><i class="bi bi-send-fill fs-6"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Sidebar: Info & Quick Questions (Right Panel) -->
+                    <div class="col-md-4 p-4 bg-body overflow-y-auto h-100">
+                        <h5 class="fw-bold text-secondary mb-3"><i class="bi bi-question-circle text-teal me-1"></i> Quick Questions</h5>
+                        <div class="d-flex flex-column gap-2 mb-4">
+                            <button class="btn btn-outline-teal text-start fs-8 rounded-3 p-2.5" onclick="suggestQuestion('What should I eat for Type 2 Diabetes?')">
+                                <i class="bi bi-chat-left-dots me-1"></i> Diabetes nutrition guidelines?
+                            </button>
+                            <button class="btn btn-outline-teal text-start fs-8 rounded-3 p-2.5" onclick="suggestQuestion('How much sodium can I eat with hypertension?')">
+                                <i class="bi bi-chat-left-dots me-1"></i> Sodium restrictions in hypertension?
+                            </button>
+                            <button class="btn btn-outline-teal text-start fs-8 rounded-3 p-2.5" onclick="suggestQuestion('What are the exercise guidelines for chronic disease?')">
+                                <i class="bi bi-chat-left-dots me-1"></i> Physical exercise standards?
+                            </button>
+                            <button class="btn btn-outline-teal text-start fs-8 rounded-3 p-2.5" onclick="suggestQuestion('What foods reduce LDL cholesterol?')">
+                                <i class="bi bi-chat-left-dots me-1"></i> Saturated fat and LDL cholesterol?
+                            </button>
+                        </div>
+                        
+                        <div class="border-top pt-3">
+                            <h6 class="fw-bold mb-2 fs-7 text-secondary"><i class="bi bi-heart-pulse text-teal me-1"></i> Safety Policy</h6>
+                            <p class="fs-8 text-muted mb-0">
+                                This assistant answers queries referencing verified WHO and American Heart Association guidelines. If you feel unwell or have concerning symptoms, please contact your healthcare provider or emergency services immediately.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const chatForm = document.getElementById("chat-form");
+const chatInput = document.getElementById("chat-input");
+const messagesContainer = document.getElementById("chat-messages-container");
+
+chatForm.addEventListener("submit", function(e) {
+    e.preventDefault();
+    const query = chatInput.value.trim();
+    if (!query) return;
+    
+    // Add user message
+    addUserMessage(query);
+    chatInput.value = "";
+    
+    // Add loading skeleton
+    const skeletonId = addLoadingSkeleton();
+    
+    // Post to endpoint
+    const csrfToken = "{{ csrf_token() }}";
+    fetch("/ai/chat/send", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+        },
+        body: JSON.stringify({ message: query })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("HTTP error " + res.status);
+        return res.json();
+    })
+    .then(data => {
+        removeLoadingSkeleton(skeletonId);
+        addBotMessage(data.answer);
+    })
+    .catch(err => {
+        console.error("AI chat error:", err);
+        removeLoadingSkeleton(skeletonId);
+        addBotMessage("Sorry, I encountered a communication error. Please try again.");
+    });
+});
+
+function suggestQuestion(text) {
+    chatInput.value = text;
+    chatForm.dispatchEvent(new Event('submit'));
+}
+
+function addUserMessage(text) {
+    const div = document.createElement("div");
+    div.className = "d-flex gap-2.5 justify-content-end mb-4";
+    div.innerHTML = `
+        <div class="bg-teal text-white p-3 rounded-4 shadow-sm" style="max-width: 80%;">
+            <p class="mb-0 fs-7">${escapeHTML(text)}</p>
+        </div>
+        <div class="p-2 rounded-circle bg-teal-light text-teal fs-8 align-self-start mt-1"><i class="bi bi-person"></i></div>
+    `;
+    messagesContainer.appendChild(div);
+    scrollToBottom();
+}
+
+function addBotMessage(text) {
+    const div = document.createElement("div");
+    div.className = "d-flex gap-2.5 mb-4";
+    
+    // Parse markdown formatting using Marked.js
+    const parsedText = marked.parse(text);
+    
+    div.innerHTML = `
+        <div class="p-2 rounded-circle bg-teal text-white fs-8 align-self-start mt-1"><i class="bi bi-robot"></i></div>
+        <div class="bg-body p-3 rounded-4 shadow-sm border" style="max-width: 80%;">
+            <h6 class="fw-bold mb-1 fs-7">CareTrack AI Assistant</h6>
+            <div class="fs-7">${parsedText}</div>
+        </div>
+    `;
+    messagesContainer.appendChild(div);
+    scrollToBottom();
+}
+
+function addLoadingSkeleton() {
+    const skeletonId = "skeleton-" + Date.now();
+    const div = document.createElement("div");
+    div.className = "d-flex gap-2.5 mb-4";
+    div.id = skeletonId;
+    div.innerHTML = `
+        <div class="p-2 rounded-circle bg-teal text-white fs-8 align-self-start mt-1"><i class="bi bi-robot"></i></div>
+        <div class="bg-body p-3 rounded-4 shadow-sm border w-50">
+            <div class="placeholder-glow">
+                <span class="placeholder col-7 rounded"></span>
+                <span class="placeholder col-9 rounded"></span>
+                <span class="placeholder col-4 rounded"></span>
+            </div>
+        </div>
+    `;
+    messagesContainer.appendChild(div);
+    scrollToBottom();
+    return skeletonId;
+}
+
+function removeLoadingSkeleton(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+}
+
+function scrollToBottom() {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function escapeHTML(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+</script>
+{% endblock %}

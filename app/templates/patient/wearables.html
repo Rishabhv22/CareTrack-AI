@@ -1,0 +1,495 @@
+{% extends 'base.html' %}
+
+{% block title %}Wearable & Health Data - CareTrack AI{% endblock %}
+
+{% block content %}
+{% macro source_badge(metric_name, sources) %}
+    {% set src = sources.get(metric_name, 'wearable') %}
+    {% if src == 'manual' %}
+        <span class="badge bg-secondary text-white fs-9 mt-1 py-0.5 px-2">Manual Entry</span>
+    {% elif src == 'health_platform' %}
+        <span class="badge bg-info-subtle text-info border border-info fs-9 mt-1 py-0.5 px-2">Health Platform</span>
+    {% elif src == 'medical_device' %}
+        <span class="badge bg-primary-subtle text-primary border border-primary fs-9 mt-1 py-0.5 px-2">Medical Device</span>
+    {% elif src == 'medical_report' %}
+        <span class="badge bg-danger-subtle text-danger border border-danger fs-9 mt-1 py-0.5 px-2">Medical Report</span>
+    {% else %}
+        <span class="badge bg-teal text-white fs-9 mt-1 py-0.5 px-2">Smart Wearable</span>
+    {% endif %}
+{% endmacro %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h1 class="fw-bold tracking-tight mb-1"><i class="bi bi-watch text-teal me-2"></i>Wearable & Health Data</h1>
+            <p class="text-muted">Automatically synchronize physiological metrics, activity rates, and bio-parameters from connected devices.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <!-- Back to Dashboard Link -->
+            <a href="{{ url_for('patient.dashboard') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Consent & Connection Gate -->
+    <div class="row g-4 mb-4">
+        <!-- Connection Manager Card -->
+        <div class="col-md-5">
+            <div class="card card-dashboard h-100 p-4 border-0 shadow-sm">
+                <h5 class="fw-bold text-secondary mb-3"><i class="bi bi-cpu text-teal me-1"></i> Device Manager</h5>
+                
+                {% if device %}
+                    <!-- Connected State -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1 fs-8">
+                                <i class="bi bi-check-circle-fill me-1"></i> Connected
+                            </span>
+                            <span class="text-muted fs-8">Added {{ device.connected_at.strftime('%b %d, %Y') }}</span>
+                        </div>
+                        <h4 class="fw-bold text-body mb-0">{{ device.device_name }}</h4>
+                        <span class="fs-8 text-muted d-block mb-3">Provider: {{ device.provider }} ({{ device.device_type }})</span>
+                        
+                        <div class="border-top pt-3">
+                            <span class="fs-8 text-muted d-block">LAST SYNCHRONIZATION</span>
+                            <strong class="fs-7 text-body d-block mb-3" id="last-sync-time">
+                                {% if device.last_synced_at %}
+                                    {{ device.last_synced_at.strftime('%b %d, %Y at %I:%M %p') }}
+                                {% else %}
+                                    Never Synced
+                                {% endif %}
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button id="btn-sync-now" class="btn btn-teal btn-sm rounded-pill px-3 fw-semibold">
+                            <i class="bi bi-arrow-repeat me-1" id="sync-icon"></i> Sync Now
+                        </button>
+                        <button id="btn-disconnect" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-semibold">
+                            <i class="bi bi-x-circle me-1"></i> Disconnect
+                        </button>
+                    </div>
+                {% else %}
+                    <!-- Disconnected State / Consent Form -->
+                    <div class="text-center py-3 mb-3">
+                        <i class="bi bi-bluetooth text-muted display-4 d-block mb-2"></i>
+                        <h5 class="fw-bold text-body">No Device Connected</h5>
+                        <p class="text-muted fs-8 px-2">Authorize CareTrack AI to sync data from Apple Health, Google Health Connect, or Fitbit.</p>
+                    </div>
+
+                    <div class="bg-body-tertiary rounded-4 p-3 mb-3 border">
+                        <div class="form-check text-start">
+                            <input class="form-check-input mt-1.5" type="checkbox" id="consent-check">
+                            <label class="form-check-label fs-8 text-secondary" for="consent-check">
+                                <strong>Data Sync Consent:</strong> I authorize CareTrack AI to connect to my wearable provider and securely pull physiological metrics.
+                            </label>
+                        </div>
+                    </div>
+
+                    <button id="btn-connect-mock" class="btn btn-teal w-100 rounded-pill py-2 fw-semibold">
+                        <i class="bi bi-plus-circle me-1"></i> Connect Demo Wearable
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Today's Synced Telemetry Card -->
+        <div class="col-md-7">
+            <div class="card card-dashboard h-100 p-4 border-0 shadow-sm">
+                <h5 class="fw-bold text-secondary mb-3"><i class="bi bi-heart-pulse text-danger me-1"></i> Today's Health Metrics</h5>
+                
+                {% if summary %}
+                    <!-- Labeled DEMO DATA banner if mock -->
+                    <div class="alert alert-info py-2 px-3 rounded-3 fs-8 mb-3 d-flex align-items-center gap-2">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <span><strong>DEMO DATA</strong> — All metrics below are generated synthetic values.</span>
+                    </div>
+
+                    <div class="row g-3">
+                        <!-- Steps -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border position-relative">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">STEPS</span>
+                                <strong class="fs-4 text-body d-block">{{ "{:,}".format(summary.total_steps or 0) }}</strong>
+                                {{ source_badge('steps', sources) }}
+                            </div>
+                        </div>
+                        <!-- Sleep -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">SLEEP</span>
+                                <strong class="fs-4 text-body d-block">{{ summary.sleep_hours or 'N/A' }} <span class="fs-7 text-muted fw-normal">hrs</span></strong>
+                                {{ source_badge('sleep', sources) }}
+                            </div>
+                        </div>
+                        <!-- Average HR -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">AVG HEART RATE</span>
+                                <strong class="fs-4 text-body d-block">{{ summary.average_heart_rate|round|int if summary.average_heart_rate else 'N/A' }} <span class="fs-7 text-muted fw-normal">BPM</span></strong>
+                                {{ source_badge('heart_rate', sources) }}
+                            </div>
+                        </div>
+                        <!-- Resting HR -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">RESTING HR</span>
+                                <strong class="fs-4 text-body d-block">{{ summary.resting_heart_rate or 'N/A' }} <span class="fs-7 text-muted fw-normal">BPM</span></strong>
+                                {{ source_badge('resting_heart_rate', sources) }}
+                            </div>
+                        </div>
+                        <!-- Calories -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">CALORIES</span>
+                                <strong class="fs-4 text-body d-block">{{ summary.calories_burned|round|int if summary.calories_burned else 'N/A' }} <span class="fs-7 text-muted fw-normal">kcal</span></strong>
+                                {{ source_badge('calories', sources) }}
+                            </div>
+                        </div>
+                        <!-- Active Minutes -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">ACTIVE MINS</span>
+                                <strong class="fs-4 text-body d-block">{{ summary.active_minutes or '0' }} <span class="fs-7 text-muted fw-normal">mins</span></strong>
+                                {{ source_badge('active_minutes', sources) }}
+                            </div>
+                        </div>
+                        <!-- Weight -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">WEIGHT</span>
+                                <strong class="fs-4 text-body d-block">{{ summary.weight or 'N/A' }} <span class="fs-7 text-muted fw-normal">kg</span></strong>
+                                {{ source_badge('weight', sources) }}
+                            </div>
+                        </div>
+                        <!-- Blood Pressure -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">BP READING</span>
+                                <strong class="fs-4 text-body d-block">
+                                    {% if summary.systolic_bp and summary.diastolic_bp %}
+                                        {{ summary.systolic_bp }}/{{ summary.diastolic_bp }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </strong>
+                                {{ source_badge('blood_pressure_systolic', sources) }}
+                            </div>
+                        </div>
+                        <!-- SpO2 -->
+                        <div class="col-6 col-md-4">
+                            <div class="p-3 bg-light rounded-4 border">
+                                <span class="fs-9 text-muted d-block fw-semibold mb-1">BLOOD OXYGEN (SPO2)</span>
+                                <strong class="fs-4 text-body d-block">{{ summary.spo2 or 'N/A' }}<span class="fs-7 text-muted fw-normal">%</span></strong>
+                                {{ source_badge('spo2', sources) }}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-graph-up-arrow display-4 mb-3 d-block text-secondary"></i>
+                        <p class="fs-7">No health data synced for today. Grant consent and connect a device above to begin tracking.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Health Trends Section -->
+    <div class="card card-dashboard p-4 border-0 shadow-sm mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+            <h4 class="fw-bold mb-0 text-body"><i class="bi bi-graph-up text-teal me-2"></i>Biometric Wearable Trends</h4>
+            
+            <!-- Days Lookback Picker -->
+            <div class="btn-group btn-group-sm rounded-pill" role="group" aria-label="Select lookback period">
+                <button type="button" class="btn btn-outline-teal px-3 active" data-days="7">7 Days</button>
+                <button type="button" class="btn btn-outline-teal px-3" data-days="30">30 Days</button>
+                <button type="button" class="btn btn-outline-teal px-3" data-days="90">90 Days</button>
+            </div>
+        </div>
+
+        <div class="alert alert-info py-2 px-3 rounded-3 fs-8 mb-4">
+            <i class="bi bi-info-circle-fill me-1"></i>
+            <span><strong>DEMO DATA OVERVIEW</strong> — The charts display continuous metrics generated by the CareTrack AI simulator based on your physiological conditions.</span>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="row g-4">
+            <!-- Steps Trend -->
+            <div class="col-md-6">
+                <div class="p-3 border rounded-4 bg-body-tertiary">
+                    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-footprints text-teal me-1"></i> Daily Steps</h6>
+                    <div style="height: 220px;">
+                        <canvas id="chart-steps"></canvas>
+                    </div>
+                </div>
+            </div>
+            <!-- Weight Trend -->
+            <div class="col-md-6">
+                <div class="p-3 border rounded-4 bg-body-tertiary">
+                    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-speedometer2 text-primary me-1"></i> Body Weight (kg)</h6>
+                    <div style="height: 220px;">
+                        <canvas id="chart-weight"></canvas>
+                    </div>
+                </div>
+            </div>
+            <!-- Sleep Trend -->
+            <div class="col-md-6">
+                <div class="p-3 border rounded-4 bg-body-tertiary">
+                    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-moon-stars-fill text-warning me-1"></i> Sleep Duration (Hours)</h6>
+                    <div style="height: 220px;">
+                        <canvas id="chart-sleep"></canvas>
+                    </div>
+                </div>
+            </div>
+            <!-- Heart Rate Trend -->
+            <div class="col-md-6">
+                <div class="p-3 border rounded-4 bg-body-tertiary">
+                    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-heart-fill text-danger me-1"></i> Heart Rate (BPM)</h6>
+                    <div style="height: 220px;">
+                        <canvas id="chart-heart-rate"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let currentDays = 7;
+    let charts = {};
+
+    // CSRF helper
+    const csrfToken = "{{ csrf_token() }}";
+
+    // 1. Connect Device
+    const btnConnect = document.getElementById("btn-connect-mock");
+    if (btnConnect) {
+        btnConnect.addEventListener("click", function() {
+            const consentCheck = document.getElementById("consent-check");
+            if (!consentCheck || !consentCheck.checked) {
+                alert("Please check the data sharing consent checkbox to proceed.");
+                return;
+            }
+
+            btnConnect.disabled = true;
+            btnConnect.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Connecting...`;
+
+            fetch("/api/patient/wearables/connect", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({
+                    provider: "Demo Wearable",
+                    device_name: "Smart Health Tracker",
+                    device_type: "Smartwatch",
+                    health_data_consent: true
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert("Connection failed: " + (data.error || "Unknown error"));
+                    btnConnect.disabled = false;
+                    btnConnect.innerHTML = `<i class="bi bi-plus-circle me-1"></i> Connect Demo Wearable`;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("An error occurred. Please try again.");
+                btnConnect.disabled = false;
+                btnConnect.innerHTML = `<i class="bi bi-plus-circle me-1"></i> Connect Demo Wearable`;
+            });
+        });
+    }
+
+    // 2. Disconnect Device
+    const btnDisconnect = document.getElementById("btn-disconnect");
+    if (btnDisconnect) {
+        btnDisconnect.addEventListener("click", function() {
+            if (!confirm("Are you sure you want to disconnect your wearable device? This will revoke data synchronization consent.")) {
+                return;
+            }
+
+            btnDisconnect.disabled = true;
+            fetch("/api/patient/wearables/disconnect", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({ provider: "Demo Wearable" })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert("Error: " + (data.error || "Unknown error"));
+                    btnDisconnect.disabled = false;
+                }
+            });
+        });
+    }
+
+    // 3. Sync Now
+    const btnSync = document.getElementById("btn-sync-now");
+    if (btnSync) {
+        btnSync.addEventListener("click", function() {
+            btnSync.disabled = true;
+            const icon = document.getElementById("sync-icon");
+            icon.classList.add("spin-animation");
+            
+            fetch("/api/patient/wearables/sync", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({ days: 30 })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Sync successful! Synced ${data.metrics_synced} health metrics.`);
+                    window.location.reload();
+                } else {
+                    alert("Sync failed: " + (data.error || "Unknown error"));
+                    btnSync.disabled = false;
+                    icon.classList.remove("spin-animation");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("An error occurred during synchronization.");
+                btnSync.disabled = false;
+                icon.classList.remove("spin-animation");
+            });
+        });
+    }
+
+    // 4. Trend Charts Implementation
+    function initChart(canvasId, label, data, labels, borderColor, backgroundColor) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        if (charts[canvasId]) {
+            charts[canvasId].destroy();
+        }
+        
+        charts[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    borderColor: borderColor,
+                    backgroundColor: backgroundColor,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { color: 'rgba(0, 0, 0, 0.05)' } }
+                }
+            }
+        });
+    }
+
+    function initHrChart(labels, avgHr, restHr) {
+        const ctx = document.getElementById('chart-heart-rate').getContext('2d');
+        if (charts['chart-heart-rate']) {
+            charts['chart-heart-rate'].destroy();
+        }
+
+        charts['chart-heart-rate'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Avg Heart Rate',
+                        data: avgHr,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.2,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Resting HR',
+                        data: restHr,
+                        borderColor: '#f43f5e',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.2,
+                        pointRadius: 3,
+                        borderDash: [4, 4]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    function fetchTrends(days) {
+        fetch(`/api/patient/health-metrics/trends?days=${days}`)
+        .then(res => res.json())
+        .then(data => {
+            initChart('chart-steps', 'Daily Steps', data.steps, data.dates, '#0ea5e9', 'rgba(14, 165, 233, 0.05)');
+            initChart('chart-weight', 'Body Weight (kg)', data.weight, data.dates, '#10b981', 'rgba(16, 185, 129, 0.05)');
+            initChart('chart-sleep', 'Sleep Duration (hrs)', data.sleep, data.dates, '#f59e0b', 'rgba(245, 158, 11, 0.05)');
+            initHrChart(data.dates, data.heart_rate, data.resting_hr);
+        });
+    }
+
+    const buttons = document.querySelectorAll(".btn-group[role='group'] button");
+    buttons.forEach(btn => {
+        btn.addEventListener("click", function() {
+            buttons.forEach(b => b.classList.remove("active"));
+            this.classList.add("active");
+            const days = this.getAttribute("data-days");
+            fetchTrends(days);
+        });
+    });
+
+    {% if summary %}
+        fetchTrends(7);
+    {% endif %}
+});
+</script>
+
+<style>
+.spin-animation {
+    animation: rotate 1.2s linear infinite;
+}
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

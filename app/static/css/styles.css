@@ -1,0 +1,189 @@
+/* Custom Theme Variables & Styles */
+:root {
+    --ct-primary: #0ea5e9;
+    --ct-primary-rgb: 14, 165, 233;
+    --ct-teal: #0d9488;
+    --ct-teal-rgb: 13, 148, 136;
+    --ct-teal-hover: #0f766e;
+    --ct-teal-light: rgba(13, 148, 136, 0.1);
+    --ct-gradient-primary: linear-gradient(135deg, #0d9488 0%, #0ea5e9 100%);
+    --ct-gradient-card: linear-gradient(135deg, #f0fdfa 0%, #f0f9ff 100%);
+    --ct-border-radius: 1rem;
+    --font-heading: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+[data-bs-theme="dark"] {
+    --ct-teal-light: rgba(13, 148, 136, 0.25);
+    --ct-gradient-card: linear-gradient(135deg, #111c24 0%, #0e1e27 100%);
+}
+
+body {
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    background-color: var(--bs-body-bg);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+}
+
+/* Custom Gradients and Text */
+.text-gradient {
+    background: var(--ct-gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.text-teal {
+    color: var(--ct-teal) !important;
+}
+
+.bg-teal {
+    background-color: var(--ct-teal) !important;
+}
+
+/* Buttons */
+.btn-teal {
+    background-color: var(--ct-teal);
+    color: #fff;
+    border: none;
+    transition: all 0.3s ease;
+}
+.btn-teal:hover {
+    background-color: var(--ct-teal-hover);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+}
+
+.btn-teal-light {
+    background-color: var(--ct-teal-light);
+    color: var(--ct-teal);
+    border: none;
+    transition: all 0.3s ease;
+}
+.btn-teal-light:hover {
+    background-color: rgba(13, 148, 136, 0.2);
+    color: var(--ct-teal-hover);
+}
+
+.btn-outline-teal {
+    border: 2px solid var(--ct-teal);
+    color: var(--ct-teal);
+    background: transparent;
+    transition: all 0.3s ease;
+}
+.btn-outline-teal:hover {
+    background-color: var(--ct-teal);
+    color: #fff;
+}
+
+/* Navbar */
+.nav-link {
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.nav-link.active-link {
+    background-color: var(--ct-teal-light);
+    color: var(--ct-teal) !important;
+}
+
+/* Cards & Layout */
+.card-dashboard {
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--ct-border-radius);
+    background: var(--bs-card-bg);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-dashboard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    border-color: rgba(13, 148, 136, 0.3);
+}
+
+.card-gradient {
+    background: var(--ct-gradient-card);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+}
+
+/* Sidebar mechanics for dashboard layouts */
+.dashboard-wrapper {
+    display: flex;
+    min-height: calc(100vh - 73px);
+}
+
+.sidebar {
+    width: 260px;
+    background-color: var(--bs-body-bg);
+    border-right: 1px solid var(--bs-border-color);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+/* Utility Styles */
+.fs-7 { font-size: 0.85rem; }
+.fs-8 { font-size: 0.78rem; }
+.fs-9 { font-size: 0.72rem; }
+.tracking-tight { letter-spacing: -0.025em; }
+
+/* Micro-animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animated-fade-in {
+    animation: fadeIn 0.4s ease forwards;
+}
+
+/* Safety banner overrides */
+.disclaimer-box {
+    border-left: 4px solid var(--bs-warning) !important;
+}
+
+/* Login/Registration layout */
+.auth-container {
+    max-width: 480px;
+    margin: 5% auto;
+    padding: 2.5rem;
+    border-radius: 1.5rem;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+}
+
+/* Care Timeline styling */
+.timeline-container {
+    position: relative;
+}
+.timeline-item {
+    padding-left: 10px;
+}
+.timeline-item span {
+    top: 24px;
+    z-index: 2;
+}
+.timeline-content {
+    transition: all 0.2s ease;
+}
+.timeline-content:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.bg-light-teal {
+    background-color: rgba(13, 148, 136, 0.05) !important;
+}
+
+.border-teal-light {
+    border-color: rgba(13, 148, 136, 0.15) !important;
+}

@@ -1,0 +1,39 @@
+# Environment and Secrets
+.env
+.env.local
+*.env
+
+# Python Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Python Bytecode and Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database and Storage
+instance/
+*.db
+*.sqlite3
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# Temporary archives
+README.zip
+caretrack-ai.zip
+

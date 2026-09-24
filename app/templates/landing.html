@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+
+{% block title %}CareTrack AI - AI-Assisted Chronic Care Monitoring Platform{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="py-5 overflow-hidden position-relative bg-body-tertiary border-bottom">
+    <div class="container px-4 py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6 animated-fade-in">
+                <div class="badge rounded-pill bg-teal-light text-teal fw-semibold px-3 py-2 mb-3 fs-7">
+                    <i class="bi bi-shield-plus me-1"></i> B.Tech Capstone Project
+                </div>
+                <h1 class="display-3 fw-bold tracking-tight mb-3">
+                    <span class="text-gradient">CareTrack AI</span>
+                </h1>
+                <h2 class="h3 fw-semibold text-body-secondary mb-3">Bridge the gap between consultations.</h2>
+                <p class="lead text-muted mb-4">
+                    AI-assisted chronic care monitoring that helps doctors understand patient progress, medication compliance, and health trends between visits.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-teal btn-lg px-4 rounded-pill fw-semibold shadow-sm">
+                        Get Started <i class="bi bi-arrow-right-short ms-1 fs-5 align-middle"></i>
+                    </a>
+                    <a href="{{ url_for('auth.login') }}?role=doctor" class="btn btn-teal-light btn-lg px-4 rounded-pill fw-semibold">
+                        <i class="bi bi-person-heart me-1"></i> Doctor Login
+                    </a>
+                    <a href="{{ url_for('auth.login') }}?role=patient" class="btn btn-outline-secondary btn-lg px-4 rounded-pill fw-semibold">
+                        Patient Login
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <!-- Visual Card Layout demonstrating dashboards -->
+                <div class="position-relative d-flex justify-content-center align-items-center p-4">
+                    <div class="card card-dashboard card-gradient border-0 shadow-lg p-4 w-100 rounded-5 position-relative z-1" style="max-width: 500px;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <span class="fw-bold fs-5 text-body"><i class="bi bi-activity text-teal me-2"></i>Patient Progress Analytics</span>
+                            <span class="badge bg-success-subtle text-success px-3 py-1.5 rounded-pill fw-semibold">Stable</span>
+                        </div>
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between text-muted fs-7 mb-2">
+                                <span>Medication Compliance</span>
+                                <span class="fw-semibold text-body">94%</span>
+                            </div>
+                            <div class="progress rounded-pill" style="height: 8px;">
+                                <div class="progress-bar bg-teal" role="progressbar" style="width: 94%" aria-valuenow="94" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between text-muted fs-7 mb-2">
+                                <span>Exercise Consistency</span>
+                                <span class="fw-semibold text-body">82%</span>
+                            </div>
+                            <div class="progress rounded-pill" style="height: 8px;">
+                                <div class="progress-bar bg-teal" role="progressbar" style="width: 82%" aria-valuenow="82" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between border-top pt-3 fs-7 text-muted">
+                            <div><i class="bi bi-calendar2-heart me-1"></i> 90 Days Monitored</div>
+                            <div class="text-teal fw-semibold"><i class="bi bi-shield-check me-1"></i> HIPAA Safe Schema</div>
+                        </div>
+                    </div>
+                    <!-- Decorative shapes -->
+                    <div class="position-absolute bg-teal opacity-10 rounded-circle filter-blur" style="width: 300px; height: 300px; top: 10%; right: 10%; filter: blur(60px);"></div>
+                    <div class="position-absolute bg-primary opacity-10 rounded-circle filter-blur" style="width: 250px; height: 250px; bottom: 10%; left: 10%; filter: blur(50px);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- The Problem vs Solution -->
+<section class="py-5" id="problem">
+    <div class="container px-4 my-5">
+        <div class="row g-5">
+            <div class="col-md-6">
+                <div class="p-4 rounded-4 bg-danger-subtle h-100 border border-danger-subtle">
+                    <span class="badge bg-danger text-white mb-3 px-3 py-1.5 rounded-pill fw-semibold">The Chronic Care Gap</span>
+                    <h3 class="fw-bold mb-3 text-danger-emphasis">The Consultation Blind Spot</h3>
+                    <p class="text-secondary-emphasis">
+                        Once a chronic disease patient leaves the clinic, the doctor loses all visibility into their daily health metrics, dietary choices, exercise compliance, and medication adherence. 
+                    </p>
+                    <p class="text-secondary-emphasis">
+                        Patients return months later for follow-ups with incomplete or forgotten logs, forcing doctors to make complex medical decisions based on spot checkups rather than longitudinal data.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6" id="solution">
+                <div class="p-4 rounded-4 bg-success-subtle h-100 border border-success-subtle">
+                    <span class="badge bg-success text-white mb-3 px-3 py-1.5 rounded-pill fw-semibold">CareTrack AI Solution</span>
+                    <h3 class="fw-bold mb-3 text-success-emphasis">Continuous Insights & Trends</h3>
+                    <p class="text-secondary-emphasis">
+                        CareTrack AI bridges the gap. Patients complete a quick daily health check-in, write symptom diaries, and upload medical reports. 
+                    </p>
+                    <p class="text-secondary-emphasis">
+                        Using OCR lab result parsing, NLP diary summary, and Machine Learning trend grouping, CareTrack AI aggregates this information into an actionable dashboard for the clinician's review.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How it works -->
+<section class="py-5 bg-body-tertiary border-top border-bottom">
+    <div class="container px-4 my-5">
+        <h2 class="text-center fw-bold mb-5 tracking-tight">How CareTrack AI Works</h2>
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-3">
+                <div class="card card-dashboard h-100 p-4 text-center border-0 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center bg-teal-light text-teal rounded-circle mb-3 mx-auto" style="width: 60px; height: 60px;">
+                        <i class="bi bi-clipboard2-pulse fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold">1. Doctor Prescribes</h5>
+                    <p class="text-muted fs-7 mb-0">Doctor diagnoses patient and adds target conditions (Type 2 Diabetes, Hypertension) and prescribed medications.</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-dashboard h-100 p-4 text-center border-0 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center bg-teal-light text-teal rounded-circle mb-3 mx-auto" style="width: 60px; height: 60px;">
+                        <i class="bi bi-phone-vibrate fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold">2. Patient Check-In</h5>
+                    <p class="text-muted fs-7 mb-0">Patient logs blood pressure, glucose, weight, active minutes, and uploads standard lab test files daily or weekly.</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-dashboard h-100 p-4 text-center border-0 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center bg-teal-light text-teal rounded-circle mb-3 mx-auto" style="width: 60px; height: 60px;">
+                        <i class="bi bi-cpu fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold">3. AI & ML Process</h5>
+                    <p class="text-muted fs-7 mb-0">The engine extracts lab values, runs NLP diary keyword extraction, compiles adherence scores, and clusters trends.</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-dashboard h-100 p-4 text-center border-0 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center bg-teal-light text-teal rounded-circle mb-3 mx-auto" style="width: 60px; height: 60px;">
+                        <i class="bi bi-shield-fill-check fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold">4. Doctor Reviews</h5>
+                    <p class="text-muted fs-7 mb-0">Doctor evaluates compliance statistics and progress flags on their dashboard before adjusting care plans.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Product Features -->
+<section class="py-5" id="features">
+    <div class="container px-4 my-5">
+        <h2 class="text-center fw-bold mb-2 tracking-tight">CareTrack AI Key Features</h2>
+        <p class="text-center text-muted mb-5">Advanced capabilities structured for future healthcare clinics.</p>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card card-dashboard h-100 p-4 border-0 shadow-sm">
+                    <i class="bi bi-file-earmark-pdf-fill text-teal fs-2 mb-3"></i>
+                    <h5 class="fw-bold">Lab Report OCR Parser</h5>
+                    <p class="text-muted fs-7 mb-0">Automatically parse standard lab values (HbA1c, Glucose, Lipids) from uploaded PDF or image files. Correct reading errors with a review workflow before saving.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-dashboard h-100 p-4 border-0 shadow-sm">
+                    <i class="bi bi-heart-fill text-teal fs-2 mb-3"></i>
+                    <h5 class="fw-bold">Daily Health Logging</h5>
+                    <p class="text-muted fs-7 mb-0">Patients track biometric markers (Blood pressure, glucose) and compliance checkboxes (meds, diet, exercise) in under a minute.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-dashboard h-100 p-4 border-0 shadow-sm">
+                    <i class="bi bi-journal-medical text-teal fs-2 mb-3"></i>
+                    <h5 class="fw-bold">NLP Journal Analyzer</h5>
+                    <p class="text-muted fs-7 mb-0">Identify specific symptoms (fatigue, pain, dizziness) and compliance concerns from free-text diaries using natural language processing.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-dashboard h-100 p-4 border-0 shadow-sm">
+                    <i class="bi bi-speedometer text-teal fs-2 mb-3"></i>
+                    <h5 class="fw-bold">Care Adherence Score</h5>
+                    <p class="text-muted fs-7 mb-0">Calculate an transparent scoring index (0-100) based on medication logging, exercise consistency, diet check-ins, and clinic follow-ups.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-dashboard h-100 p-4 border-0 shadow-sm">
+                    <i class="bi bi-bar-chart-line-fill text-teal fs-2 mb-3"></i>
+                    <h5 class="fw-bold">Machine Learning Trends</h5>
+                    <p class="text-muted fs-7 mb-0">Train Random Forest & Logistic Regression classification models to predict patient progress trends and cluster patient compliance groupings.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-dashboard h-100 p-4 border-0 shadow-sm">
+                    <i class="bi bi-shield-exclamation text-teal fs-2 mb-3"></i>
+                    <h5 class="fw-bold">Clinician Alert System</h5>
+                    <p class="text-muted fs-7 mb-0">Flags requiring clinician review (e.g. low compliance thresholds, critical biometric fluctuations) are automatically pushed to the doctor dashboard.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Disclaimer Banner -->
+<section class="py-4 bg-warning-subtle text-warning-emphasis border-top border-bottom">
+    <div class="container px-4">
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-shield-fill-exclamation fs-3 flex-shrink-0 text-warning"></i>
+            <div>
+                <h5 class="fw-bold mb-1 fs-7 text-uppercase tracking-wider">Clinical Safety Declaration</h5>
+                <p class="mb-0 fs-8">
+                    CareTrack AI is a clinical support assistant and patient trend analysis tool. It is <strong>NOT</strong> an AI doctor, does not perform medical diagnosis, and does not prescribe or change drug dosages. The attending physician is the sole authorized decision-maker for all medical treatments.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

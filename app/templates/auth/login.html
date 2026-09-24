@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Log In - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="auth-container card border-0 shadow-lg p-4 p-md-5 rounded-5 animated-fade-in">
+        <div class="text-center mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center bg-teal-light text-teal rounded-circle mb-3" style="width: 60px; height: 60px;">
+                <i class="bi bi-shield-lock-fill fs-3"></i>
+            </div>
+            <h2 class="fw-bold tracking-tight">Welcome Back</h2>
+            <p class="text-muted fs-7">Access your secure clinical support dashboard</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('auth.login') }}">
+            {{ form.hidden_tag() }}
+            
+            <div class="mb-3">
+                <label for="email" class="form-label fw-semibold fs-7 text-secondary">Email Address</label>
+                {{ form.email(class="form-control rounded-3 py-2.5 " + ("is-invalid" if form.email.errors else ""), placeholder="name@domain.com", id="email") }}
+                {% for error in form.email.errors %}
+                    <div class="invalid-feedback fs-8">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="mb-3">
+                <label for="password" class="form-label fw-semibold fs-7 text-secondary">Password</label>
+                {{ form.password(class="form-control rounded-3 py-2.5 " + ("is-invalid" if form.password.errors else ""), placeholder="••••••••", id="password") }}
+                {% for error in form.password.errors %}
+                    <div class="invalid-feedback fs-8">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-check mb-4">
+                {{ form.remember(class="form-check-input", id="remember") }}
+                <label class="form-check-label fs-7 text-secondary" for="remember">
+                    Keep me signed in
+                </label>
+            </div>
+            
+            <div class="d-grid mb-3">
+                {{ form.submit(class="btn btn-teal rounded-3 py-2.5 fw-semibold") }}
+            </div>
+            
+            <div class="text-center">
+                <span class="text-muted fs-7">Don't have an account? </span>
+                <a href="{{ url_for('auth.register') }}" class="text-teal fw-semibold fs-7 text-decoration-none">Sign up here</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

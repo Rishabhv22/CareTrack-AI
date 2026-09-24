@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block title %}Clinician Dashboard - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="row g-4">
+        <!-- Main Panel -->
+        <div class="col-lg-9">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div>
+                    <h1 class="fw-bold tracking-tight mb-1">Clinician Panel</h1>
+                    <p class="text-muted mb-0">Supervise chronic care progress, adherence scores, and report extractions.</p>
+                </div>
+                <div class="text-end">
+                    <span class="fs-8 text-muted d-block">CLINIC AFFILIATION</span>
+                    <strong class="fs-6 text-teal"><i class="bi bi-hospital me-1"></i>{{ doctor.clinic_name }}</strong>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3 col-6">
+                    <div class="card card-dashboard p-3 border-0 shadow-sm">
+                        <span class="text-muted fs-8 d-block fw-semibold text-uppercase">Total Patients</span>
+                        <div class="d-flex align-items-baseline gap-2">
+                            <span class="fs-3 fw-bold text-body">{{ total_patients }}</span>
+                            <span class="fs-9 text-muted">registered</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card card-dashboard p-3 border-0 shadow-sm">
+                        <span class="text-muted fs-8 d-block fw-semibold text-uppercase">Active This Week</span>
+                        <div class="d-flex align-items-baseline gap-2">
+                            <span class="fs-3 fw-bold text-success">{{ active_patients }}</span>
+                            <span class="fs-9 text-muted">logged recently</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card card-dashboard p-3 border-0 shadow-sm">
+                        <span class="text-muted fs-8 d-block fw-semibold text-uppercase text-danger">Needs Attention</span>
+                        <div class="d-flex align-items-baseline gap-2">
+                            <span class="fs-3 fw-bold text-danger">{{ attention_patients }}</span>
+                            <span class="fs-9 text-muted">active alerts</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="card card-dashboard p-3 border-0 shadow-sm">
+                        <span class="text-muted fs-8 d-block fw-semibold text-uppercase text-teal">Avg Adherence</span>
+                        <div class="d-flex align-items-baseline gap-2">
+                            <span class="fs-3 fw-bold text-teal">{{ avg_adherence }}%</span>
+                            <span class="fs-9 text-muted">score index</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters & Search -->
+            <div class="card card-dashboard border-0 shadow-sm p-3 mb-4">
+                <form method="GET" class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-transparent border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" name="search" class="form-control border-start-0" placeholder="Search patient name..." value="{{ filter_search }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="condition" class="form-select form-select-sm rounded-3">
+                            <option value="">All Conditions</option>
+                            <option value="Type 2 Diabetes" {% if filter_condition == 'Type 2 Diabetes' %}selected{% endif %}>Type 2 Diabetes</option>
+                            <option value="Hypertension" {% if filter_condition == 'Hypertension' %}selected{% endif %}>Hypertension</option>
+                            <option value="Obesity" {% if filter_condition == 'Obesity' %}selected{% endif %}>Obesity</option>
+                            <option value="High Cholesterol" {% if filter_condition == 'High Cholesterol' %}selected{% endif %}>High Cholesterol</option>
+                            <option value="Heart Disease" {% if filter_condition == 'Heart Disease' %}selected{% endif %}>Heart Disease</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="adherence" class="form-select form-select-sm rounded-3">
+                            <option value="">All Adherence Levels</option>
+                            <option value="high" {% if filter_adherence == 'high' %}selected{% endif %}>High (>80%)</option>
+                            <option value="medium" {% if filter_adherence == 'medium' %}selected{% endif %}>Medium (50%-80%)</option>
+                            <option value="low" {% if filter_adherence == 'low' %}selected{% endif %}>Low (<50%)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-teal btn-sm rounded-pill fw-semibold">Apply Filters</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Patient Table -->
+            <div class="card card-dashboard border-0 shadow-sm overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light fs-8 text-secondary">
+                            <tr>
+                                <th>Patient Details</th>
+                                <th>Condition</th>
+                                <th>Care Adherence Score</th>
+                                <th>Last Check-In</th>
+                                <th>Latest Lab Report</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if not patients %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="bi bi-people mb-2 fs-2 d-block"></i> No matching patients connected to your panel.
+                                    </td>
+                                end
+                            {% else %}
+                                {% for item in patients %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2.5">
+                                                <div class="p-2.5 rounded-circle bg-teal-light text-teal fw-bold fs-7">
+                                                    {{ item.patient.name[0] | upper }}
+                                                </div>
+                                                <div>
+                                                    <span class="fw-semibold text-body d-block">{{ item.patient.name }}</span>
+                                                    <span class="text-muted fs-8">{{ item.patient.gender }}, {{ item.patient.age }} yrs</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-body border text-body-secondary px-2.5 py-1.5 rounded-pill fs-8 fw-medium">
+                                                {{ item.patient.primary_condition }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress rounded-pill flex-grow-1" style="height: 6px; min-width: 80px;">
+                                                    <div class="progress-bar {% if item.adherence >= 80 %}bg-success{% elif item.adherence >= 50 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ item.adherence }}%"></div>
+                                                </div>
+                                                <span class="fw-bold fs-7 text-body">{{ item.adherence }}%</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if item.last_checkin %}
+                                                <span class="fs-7 text-body {% if not item.is_active %}text-danger-emphasis{% endif %}">
+                                                    {{ item.last_checkin.strftime('%b %d, %Y') }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted fs-7 italic">Never logged</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.latest_report %}
+                                                <span class="fs-7 text-body">{{ item.latest_report.strftime('%b %d, %Y') }}</span>
+                                            {% else %}
+                                                <span class="text-muted fs-7 italic">No reports</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('doctor.patient_detail', patient_id=item.patient.id) }}" class="btn btn-teal btn-sm rounded-pill px-3 fs-8">
+                                                Review Case
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Alerts Sidebar -->
+        <div class="col-lg-3">
+            <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-bell-fill text-danger me-1"></i> Active System Alerts</h5>
+            {% if not recent_alerts %}
+                <div class="card card-dashboard p-4 border-0 shadow-sm text-center text-muted fs-8">
+                    <i class="bi bi-shield-check text-success display-6 mb-2"></i> All patients logging parameters within standard ranges.
+                </div>
+            {% else %}
+                <div class="d-flex flex-column gap-3" aria-live="polite">
+                    {% for alert in recent_alerts %}
+                        <div class="card card-dashboard p-3 border-0 shadow-sm border-start border-4 {% if alert.severity == 'HIGH' %}border-danger bg-danger-subtle{% else %}border-warning bg-warning-subtle{% endif %}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge {% if alert.severity == 'HIGH' %}bg-danger{% else %}bg-warning text-dark{% endif %} px-2 py-0.5 rounded-pill fs-9 fw-semibold">
+                                    {{ alert.severity }} REVIEW
+                                </span>
+                                <span class="fs-9 text-muted">{{ alert.created_at.strftime('%H:%M %p') }}</span>
+                            </div>
+                            <strong class="fs-7 text-body-emphasis d-block">{{ alert.patient.name }}</strong>
+                            <p class="fs-8 text-secondary-emphasis mb-2">{{ alert.message }}</p>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <a href="{{ url_for('doctor.patient_detail', patient_id=alert.patient_id) }}" class="fs-8 fw-semibold text-teal text-decoration-none">Inspect Profile</a>
+                                <button class="btn btn-sm btn-outline-secondary py-0.5 px-2 fs-9 rounded-pill" onclick="resolveAlert('{{ alert.id }}')">Acknowledge</button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function resolveAlert(alertId) {
+    const csrfToken = "{{ csrf_token() }}";
+    fetch("/doctor/alert/resolve/" + alertId, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Reload page to refresh the alerts dashboard list
+            window.location.reload();
+        }
+    })
+    .catch(err => console.error("Error resolving alert:", err));
+}
+</script>
+{% endblock %}

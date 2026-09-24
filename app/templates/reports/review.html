@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Review Report Analysis - CareTrack AI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card border-0 shadow-lg rounded-5 overflow-hidden animated-fade-in">
+                <!-- Header -->
+                <div class="p-4 bg-teal text-white text-center">
+                    <h2 class="fw-bold tracking-tight mb-1"><i class="bi bi-shield-check-fill me-1"></i>Verify Lab Values</h2>
+                    <p class="mb-0 fs-7 opacity-75">OCR scanned: {{ report.file_name }}. Check and verify parameters below.</p>
+                </div>
+                
+                <!-- Body -->
+                <div class="p-4 p-md-5 bg-body">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <!-- Test Date -->
+                        <div class="row mb-4 align-items-center">
+                            <div class="col-md-4">
+                                <label for="test_date" class="form-label fw-bold text-secondary fs-7 mb-md-0">Date of Medical Test</label>
+                            </div>
+                            <div class="col-md-5">
+                                <input type="date" name="test_date" id="test_date" class="form-control rounded-3" value="{{ today_str }}" required>
+                            </div>
+                        </div>
+
+                        <!-- Extracted Parameters Table -->
+                        <div class="table-responsive mb-4">
+                            <table class="table align-middle" id="parameters-table">
+                                <thead class="table-light fs-8 text-secondary">
+                                    <tr>
+                                        <th style="width: 35%;">Parameter Name</th>
+                                        <th style="width: 25%;">Extracted Value</th>
+                                        <th style="width: 15%;">Unit</th>
+                                        <th style="width: 15%;">Ref Range</th>
+                                        <th style="width: 15%;">Confidence</th>
+                                        <th style="width: 5%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if not lab_results %}
+                                        <!-- If no parameters were found, show empty rows so user can add manually -->
+                                        <tr class="parameter-row">
+                                            <td>
+                                                <select name="param_name[]" class="form-select rounded-3 py-1.5 fs-7">
+                                                    <option value="HbA1c">HbA1c</option>
+                                                    <option value="Fasting Glucose">Fasting Glucose</option>
+                                                    <option value="Random Glucose">Random Glucose</option>
+                                                    <option value="Total Cholesterol">Total Cholesterol</option>
+                                                    <option value="LDL Cholesterol">LDL Cholesterol</option>
+                                                    <option value="HDL Cholesterol">HDL Cholesterol</option>
+                                                    <option value="Triglycerides">Triglycerides</option>
+                                                    <option value="Hemoglobin">Hemoglobin</option>
+                                                    <option value="Vitamin D">Vitamin D</option>
+                                                    <option value="Vitamin B12">Vitamin B12</option>
+                                                    <option value="Weight">Weight (Body Weight)</option>
+                                                    <option value="Systolic BP">Systolic BP</option>
+                                                    <option value="Diastolic BP">Diastolic BP</option>
+                                                </select>
+                                            </td>
+                                            <td><input type="number" name="param_value[]" step="0.01" class="form-control rounded-3 py-1.5 fs-7" required></td>
+                                            <td><input type="text" name="param_unit[]" class="form-control rounded-3 py-1.5 fs-7 bg-light text-muted" value="%" readonly id="unit-0"></td>
+                                            <td><input type="text" name="param_range[]" class="form-control rounded-3 py-1.5 fs-7 bg-light text-muted" value="4.0 - 5.6" readonly id="range-0"></td>
+                                            <td>
+                                                <span class="badge bg-secondary rounded-pill fs-9 py-1 px-2">Manual</span>
+                                                <input type="hidden" name="param_confidence[]" value="100.0">
+                                            </td>
+                                            <td><button type="button" class="btn btn-outline-danger btn-sm border-0 rounded-circle" onclick="removeRow(this)"><i class="bi bi-trash-fill"></i></button></td>
+                                        </tr>
+                                    {% else %}
+                                        {% for res in lab_results %}
+                                            <tr class="parameter-row">
+                                                <td>
+                                                    <input type="text" name="param_name[]" class="form-control rounded-3 py-1.5 fs-7 fw-semibold bg-light" value="{{ res.parameter_name }}" readonly>
+                                                </td>
+                                                <td>
+                                                     <input type="number" name="param_value[]" step="0.01" class="form-control rounded-3 py-1.5 fs-7 border-teal" value="{{ res.parameter_value }}" required>
+                                                     {% if res.confidence and res.confidence < 85.0 %}
+                                                         <div class="text-danger fs-9 mt-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Low OCR confidence. Please verify!</div>
+                                                         <div class="form-check mt-1">
+                                                             <input class="form-check-input border-danger" type="checkbox" name="param_confirmed[]" id="confirm-{{ loop.index0 }}" value="{{ res.parameter_name }}" required>
+                                                             <label class="form-check-label fs-9 fw-semibold text-danger" for="confirm-{{ loop.index0 }}">
+                                                                 Confirm value is correct
+                                                             </label>
+                                                         </div>
+                                                     {% endif %}
+                                                 </td>
+                                                <td>
+                                                    <input type="text" name="param_unit[]" class="form-control rounded-3 py-1.5 fs-7 bg-light text-muted" value="{{ res.unit }}" readonly>
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="param_range[]" class="form-control rounded-3 py-1.5 fs-7 bg-light text-muted" value="{{ res.normal_range }}" readonly>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="badge {% if res.confidence and res.confidence < 85.0 %}bg-danger{% else %}bg-success{% endif %} rounded-pill fs-9 py-1 px-2">
+                                                            {{ '%.1f' | format(res.confidence or 95.0) }}%
+                                                        </span>
+                                                        <input type="hidden" name="param_confidence[]" value="{{ res.confidence or 95.0 }}">
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm border-0 rounded-circle" onclick="removeRow(this)"><i class="bi bi-trash-fill"></i></button>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between gap-3 mb-4">
+                            <button type="button" class="btn btn-outline-teal rounded-pill px-4 fs-7" onclick="addRow()">
+                                <i class="bi bi-plus-circle-fill me-1"></i> Add Lab Value
+                            </button>
+                            <span class="text-muted fs-8"><i class="bi bi-info-circle me-1"></i> Adjust values if OCR misread decimal points.</span>
+                        </div>
+
+                        <!-- Healthcare Alert -->
+                        <div class="alert alert-warning border-0 rounded-4 d-flex gap-2.5 fs-8 text-warning-emphasis bg-warning-subtle mb-4">
+                            <i class="bi bi-exclamation-triangle-fill fs-5 mt-0.5 flex-shrink-0 text-warning"></i>
+                            <div>
+                                <strong>Important Check:</strong> Make sure units (e.g. mg/dL vs %) are correct. Saving these values adds them permanently to the patient trend database.
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2 border-top pt-4">
+                            <button type="submit" class="btn btn-teal btn-lg rounded-3 py-2.5 fw-semibold">
+                                <i class="bi bi-file-earmark-check-fill me-1"></i> Save Verified Results
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const parameterTemplates = {
+    "HbA1c": { unit: "%", range: "4.0 - 5.6" },
+    "Fasting Glucose": { unit: "mg/dL", range: "70 - 99" },
+    "Random Glucose": { unit: "mg/dL", range: "70 - 140" },
+    "Total Cholesterol": { unit: "mg/dL", range: "< 200" },
+    "LDL Cholesterol": { unit: "mg/dL", range: "< 100" },
+    "HDL Cholesterol": { unit: "mg/dL", range: "> 40" },
+    "Triglycerides": { unit: "mg/dL", range: "< 150" },
+    "Hemoglobin": { unit: "g/dL", range: "12.0 - 17.5" },
+    "Vitamin D": { unit: "ng/mL", range: "30.0 - 100.0" },
+    "Vitamin B12": { unit: "pg/mL", range: "200 - 900" },
+    "Weight": { unit: "kg", range: "Profile BMI baseline" },
+    "Systolic BP": { unit: "mmHg", range: "90 - 120" },
+    "Diastolic BP": { unit: "mmHg", range: "60 - 80" }
+};
+
+function addRow() {
+    const tbody = document.querySelector("#parameters-table tbody");
+    const rowId = document.querySelectorAll(".parameter-row").length;
+    
+    const tr = document.createElement("tr");
+    tr.className = "parameter-row";
+    
+    let selectOptions = "";
+    for (const key in parameterTemplates) {
+        selectOptions += `<option value="${key}">${key}</option>`;
+    }
+    
+    tr.innerHTML = `
+        <td>
+            <select name="param_name[]" class="form-select rounded-3 py-1.5 fs-7" onchange="updateRowTemplate(this, ${rowId})">
+                ${selectOptions}
+            </select>
+        </td>
+        <td><input type="number" name="param_value[]" step="0.01" class="form-control rounded-3 py-1.5 fs-7" required></td>
+        <td><input type="text" name="param_unit[]" class="form-control rounded-3 py-1.5 fs-7 bg-light text-muted" value="%" readonly id="unit-${rowId}"></td>
+        <td><input type="text" name="param_range[]" class="form-control rounded-3 py-1.5 fs-7 bg-light text-muted" value="4.0 - 5.6" readonly id="range-${rowId}"></td>
+        <td>
+            <span class="badge bg-secondary rounded-pill fs-9 py-1 px-2">Manual</span>
+            <input type="hidden" name="param_confidence[]" value="100.0">
+        </td>
+        <td><button type="button" class="btn btn-outline-danger btn-sm border-0 rounded-circle" onclick="removeRow(this)"><i class="bi bi-trash-fill"></i></button></td>
+    `;
+    
+    tbody.appendChild(tr);
+    // Trigger update row template to set default values for first dropdown item (HbA1c)
+    const select = tr.querySelector("select");
+    updateRowTemplate(select, rowId);
+}
+
+function updateRowTemplate(selectElement, rowId) {
+    const selectedParam = selectElement.value;
+    const template = parameterTemplates[selectedParam];
+    if (template) {
+        document.getElementById("unit-" + rowId).value = template.unit;
+        document.getElementById("range-" + rowId).value = template.range;
+    }
+}
+
+function removeRow(button) {
+    const row = button.closest("tr");
+    row.remove();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CareTrack AI - AI-Assisted Chronic Care Monitoring{% endblock %}</title>
+    <meta name="description" content="AI-assisted chronic disease monitoring and clinical decision support platform for doctors and patients.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    {% block extra_css %}{% endblock %}
+    
+    <script>
+        // Check local storage for dark mode preference before rendering to prevent flash
+        (function() {
+            const savedTheme = localStorage.getItem('caretrack-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        })();
+    </script>
+</head>
+<body>
+    <!-- Header/Navbar -->
+    <nav class="navbar navbar-expand-lg border-bottom py-3 sticky-top bg-body">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('index') }}">
+                <div class="brand-icon d-flex align-items-center justify-content-center">
+                    <i class="bi bi-heart-pulse-fill text-teal fs-4"></i>
+                </div>
+                <span class="fw-bold tracking-tight text-gradient">CareTrack AI</span>
+            </a>
+            
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1 align-items-center">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.role == 'PATIENT' %}
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-pill {% if request.endpoint == 'patient.dashboard' %}active-link{% endif %}" href="{{ url_for('patient.dashboard') }}">
+                                    <i class="bi bi-grid-fill me-1"></i> Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-pill {% if request.endpoint == 'reports.upload' %}active-link{% endif %}" href="{{ url_for('reports.upload') }}">
+                                    <i class="bi bi-file-earmark-medical-fill me-1"></i> Reports
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-pill {% if request.endpoint == 'medication.history' %}active-link{% endif %}" href="{{ url_for('medication.history') }}">
+                                    <i class="bi bi-capsule me-1"></i> Medications
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-pill {% if request.endpoint == 'ai.chat' %}active-link{% endif %}" href="{{ url_for('ai.chat') }}">
+                                    <i class="bi bi-chat-heart-fill me-1"></i> AI Assistant
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-pill {% if request.endpoint == 'wearables.manage_wearables' %}active-link{% endif %}" href="{{ url_for('wearables.manage_wearables') }}">
+                                    <i class="bi bi-watch me-1"></i> Wearables
+                                </a>
+                            </li>
+                        {% elif current_user.role == 'DOCTOR' %}
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-pill {% if request.endpoint == 'doctor.dashboard' %}active-link{% endif %}" href="{{ url_for('doctor.dashboard') }}">
+                                    <i class="bi bi-people-fill me-1"></i> Patient Panel
+                                </a>
+                            </li>
+                        {% elif current_user.role == 'ADMIN' %}
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-pill {% if request.endpoint == 'doctor.admin_dashboard' %}active-link{% endif %}" href="{{ url_for('doctor.admin_dashboard') }}">
+                                    <i class="bi bi-shield-lock-fill me-1"></i> Admin Console
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link px-3 rounded-pill" href="/#problem">Problem</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link px-3 rounded-pill" href="/#solution">Solution</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link px-3 rounded-pill" href="/#features">Features</a>
+                        </li>
+                    {% endif %}
+                </ul>
+                
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Theme Toggle Button -->
+                    <button class="btn btn-outline-secondary border-0 rounded-circle theme-toggle-btn p-2 d-flex align-items-center justify-content-center" id="themeToggleBtn" title="Toggle Light/Dark Mode" type="button">
+                        <i class="bi bi-sun-fill fs-5" id="themeIcon"></i>
+                    </button>
+                    
+                    {% if current_user.is_authenticated %}
+                        <div class="dropdown">
+                            <button class="btn btn-teal-light rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 border-0" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle fs-5"></i>
+                                <span class="fw-semibold">{{ current_user.email.split('@')[0] | capitalize }}</span>
+                                <span class="badge rounded-pill bg-teal text-white fw-medium px-2 py-1 fs-9">{{ current_user.role }}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg mt-2 p-2 rounded-4" aria-labelledby="userMenu">
+                                {% if current_user.role == 'PATIENT' and current_user.patient_profile %}
+                                    <li><a class="dropdown-url dropdown-item rounded-3 py-2 px-3" href="{{ url_for('patient.create_profile') }}"><i class="bi bi-person-gear me-2"></i> Edit Profile</a></li>
+                                {% elif current_user.role == 'DOCTOR' and current_user.doctor_profile %}
+                                    <li><a class="dropdown-url dropdown-item rounded-3 py-2 px-3" href="{{ url_for('doctor.create_profile') }}"><i class="bi bi-person-gear me-2"></i> Edit Profile</a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider my-2"></li>
+                                <li><a class="dropdown-item text-danger rounded-3 py-2 px-3" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i> Log Out</a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-teal px-4 rounded-pill fw-medium">Log In</a>
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-teal px-4 rounded-pill fw-medium">Sign Up</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Flash Messages -->
+    <div class="container mt-4 px-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show border-0 rounded-4 shadow-sm d-flex align-items-center gap-3 px-4 py-3" role="alert">
+                        {% if category == 'success' %}
+                            <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                        {% elif category == 'danger' or category == 'error' %}
+                            <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
+                        {% else %}
+                            <i class="bi bi-info-circle-fill text-primary fs-4"></i>
+                        {% endif %}
+                        <div>{{ message }}</div>
+                        <button type="button" class="btn-close m-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <!-- Main Content -->
+    <main class="min-vh-80">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer Disclaimer -->
+    <footer class="border-top py-5 bg-body-tertiary">
+        <div class="container px-4">
+            <div class="row align-items-center gap-4 gap-md-0">
+                <div class="col-md-4 text-center text-md-start">
+                    <div class="d-flex align-items-center gap-2 justify-content-center justify-content-md-start">
+                        <i class="bi bi-heart-pulse-fill text-teal fs-4"></i>
+                        <span class="fw-bold fs-5 text-gradient">CareTrack AI</span>
+                    </div>
+                    <p class="text-muted mt-2 mb-0 fs-7">© 2026 CareTrack AI. Capstone Research Project.</p>
+                </div>
+                <div class="col-md-8">
+                    <div class="disclaimer-box border border-warning rounded-4 p-3 bg-warning-subtle text-warning-emphasis fs-8">
+                        <div class="d-flex gap-2">
+                            <i class="bi bi-exclamation-octagon-fill fs-5 mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <strong>Healthcare Disclaimer:</strong> {{ healthcare_disclaimer }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    
+    <!-- Main JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (window.marked) {
+                document.querySelectorAll('.markdown-content').forEach(function(el) {
+                    const rawMarkdown = el.textContent || el.innerText;
+                    el.innerHTML = marked.parse(rawMarkdown);
+                });
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
