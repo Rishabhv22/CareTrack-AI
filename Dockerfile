@@ -30,5 +30,5 @@ ENV FIELD_ENCRYPTION_KEY=h_G-L7B0l38yK6qf3vS2Hh782wR4-r85kC-v_1E4-j0=
 EXPOSE 10000
 
 # Start production server using gunicorn with dynamic PORT support
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 2 --timeout 120 app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 2 --timeout 120 wsgi:app"]
 
