@@ -35,8 +35,15 @@ class Config:
         # Fix for Heroku PostgreSQL url configuration changes
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     
-    SQLALCHEMY_DATABASE_URI = db_url or f"sqlite:///{basedir / 'instance' / 'caretrack.db'}"
+    _db_uri = db_url or f"sqlite:///{basedir / 'instance' / 'caretrack.db'}"
+    SQLALCHEMY_DATABASE_URI = _db_uri
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    if _db_uri.startswith("sqlite"):
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            "connect_args": {"timeout": 30}
+        }
+
     
     # Upload Folder config
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
